@@ -117,6 +117,18 @@ button{font:inherit;cursor:pointer}
 .fb.none{color:var(--err)}
 .empty{padding:28px;text-align:center;color:var(--muted)}
 .howto{font-size:.88rem;color:var(--muted)}
+.dupalert{border:2px solid var(--err);background:var(--err-soft);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.dupalert h2{color:var(--err);font-size:1.15rem;display:flex;gap:10px;align-items:center}
+.dupalert .ico{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--err);color:var(--surface);font-weight:800;flex:none}
+.dupalert p{margin:0;max-width:85ch}
+.duptable{overflow-x:auto}
+.duptable table{border-collapse:collapse;width:100%;background:var(--surface);border-radius:8px;font-size:.9rem}
+.duptable th,.duptable td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.duptable th{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.duptable td.q{font-family:var(--f-mono);font-weight:600;white-space:nowrap}
+.dupkind{display:inline-block;background:var(--err);color:var(--surface);border-radius:6px;padding:1px 8px;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.dupbtn{align-self:flex-start;background:var(--err);color:var(--surface);border:0;border-radius:8px;padding:9px 16px;font-weight:600}
+.dupbtn:focus-visible{outline:2px solid var(--err);outline-offset:2px}
 .fixbox{background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
 @media (max-width:760px){.fixbox{grid-template-columns:1fr}}
 .fixtext{display:flex;flex-direction:column;gap:6px}.fixtext p{margin:0;color:var(--muted);font-size:.9rem;max-width:80ch}
@@ -151,7 +163,8 @@ button{font:inherit;cursor:pointer}
       <li><b>Espaçamento:</b> espaço entre parágrafos igual ao do Word (nem menor, nem maior), parágrafos vazios e quebras de linha em excesso.</li>
       <li><b>Imagens:</b> quantidade, imagem faltando ou quebrada, imagem diferente da do Word, tamanho maior que no Word, imagem fora do centro e título (Figura…) e fonte (Fonte: …) da imagem fora do centro.</li>
       <li><b>Tabelas:</b> tabela do Word que virou texto solto no Moodle, quantidade, conteúdo das células e largura fixa que corta a tabela no celular.</li>
-      <li><b>Alternativas:</b> quantidade, texto, gabarito, mais de uma correta, alternativa vazia ou repetida.</li>
+      <li><b>Fórmulas:</b> equações do Word que chegaram ao Moodle como texto digitado (sem frações, somatórios, raízes e expoentes montados) e objetos antigos do Word, como equações do Equation 3.0, que precisam ser conferidos.</li>
+      <li><b>Alternativas:</b> quantidade, texto e gabarito iguais ao Word, mais de uma correta, alternativa vazia, alternativas duplicadas, triplicadas ou quase iguais (no Moodle e no próprio Word), que aparecem num alerta em destaque no topo e nunca são alteradas automaticamente, e letra digitada no texto.</li>
       <li><b>Formatação:</b> negrito, itálico (fora das referências), sobrescrito e subscrito, alinhamento (justificado) e entrelinha em relação ao Word.</li>
     </ul>
   </section>
@@ -161,11 +174,13 @@ button{font:inherit;cursor:pointer}
       <h2>Correção automática</h2>
       <p>Gera um novo XML com a formatação de cada parágrafo igual à do Word, inclusive a definida nos estilos do documento: alinhamento, entrelinha, recuo da primeira linha, espaço antes e depois do parágrafo e linhas em branco. As imagens ficam sempre centralizadas, no tamanho do Word, junto com o título (Figura…) e a fonte (Fonte: …). Também tira a largura fixa das tabelas e põe as imagens no tamanho do Word, sempre centralizadas junto com o título e a fonte. Texto, alternativas, gabarito e imagens não mudam: se em alguma questão o conteúdo ficasse diferente, ela é mantida como está. Depois, a ferramenta confere o XML corrigido e mostra o resultado aqui embaixo.</p>
       <label><input type="checkbox" id="minGap" checked> Espaço entre um parágrafo e outro: onde o Word não tiver nenhum espaço entre parágrafos, acrescenta um espaço de uma linha simples. Onde o Word já tiver espaço (linha em branco ou “espaçamento depois”), usa o do Word.</label>
+      <label><input type="checkbox" id="mathImg" checked> Equações do Word como imagem, iguais às do Word (frações, somatórios, raízes, expoentes). O texto da equação fica como descrição da imagem.</label>
       <label><input type="checkbox" id="indent"> Recuo de 1,25 cm na primeira linha (ABNT) também quando o Word não tiver recuo. Desmarcado, o recuo fica igual ao do Word.</label>
       <label><input type="checkbox" id="newCat" checked> Importar numa categoria nova (o nome da categoria ganha “(corrigido)”), para não misturar com as questões antigas</label>
     </div>
     <button class="btn" id="fixBtn">Corrigir e baixar XML</button>
   </section>
+  <section id="dupAlert" class="dupalert" hidden role="alert"></section>
   <section id="summary" class="summary" hidden></section>
   <section id="results" hidden>
     <div class="toolbar">
@@ -193,7 +208,7 @@ const ns=s=>decode(s||'').replace(/[\s ]+/g,'');
 const kids=(el,n)=>el?[...el.children].filter(c=>c.nodeName===n):[];
 const kid=(el,n)=>kids(el,n)[0];
 const textOf=el=>el?[...el.getElementsByTagName('w:t')].map(t=>t.textContent).join(''):'';
-const CATS=['Texto','Parágrafos','Espaçamento','Imagens','Tabelas','Alternativas','Formatação'];
+const CATS=['Texto','Fórmulas','Parágrafos','Espaçamento','Imagens','Tabelas','Alternativas','Formatação'];
 const SEVLBL={erro:'Erro',atencao:'Atenção',info:'Info'};
 const SEVRANK={erro:3,atencao:2,info:1};
 
@@ -267,8 +282,45 @@ function omml(el){
     return {h:esc(ch)+(d.t?'<sub>'+d.h+'</sub>':'')+(u.t?'<sup>'+u.h+'</sup>':'')+e.h,t:ch+d.t+u.t+e.t}}
   return cat(el);
 }
+/* Equações do Word (OMML) -> LaTeX, para desenhar a equação como imagem igual ao Word */
+const MATHS=[];
+function omml2tex(el){
+  const K=(e,n)=>e?[...e.children].filter(c=>c.nodeName===n):[];
+  const sub=(e,n)=>{const k=K(e,n)[0];return k?omml2tex(k):''};
+  const val=(e,pr,n)=>{const p=K(e,pr)[0];const c=p&&K(p,n)[0];return c?c.getAttribute('m:val'):null};
+  const cat=e=>[...e.children].map(omml2tex).join('');
+  const n=el.nodeName;
+  const texEsc=t=>t.replace(/\\/g,'\\backslash ').replace(/([#%&_{}$])/g,'\\$1').replace(/\^/g,'\\hat{}').replace(/~/g,'\\sim ').replace(/ /g,'\\ ').replace(/\u2061/g,'');
+  if(n==='m:t'||n==='w:t')return texEsc(el.textContent);
+  if(n==='m:r'){const nor=K(el,'m:rPr')[0]&&K(K(el,'m:rPr')[0],'m:nor').length;let t='';for(const c of el.children)if(c.nodeName==='m:t'||c.nodeName==='w:t')t+=c.textContent;
+    if(!t)return '';if(/^(sen|cos|tan|tg|log|ln|exp|lim|max|min|sin|sec|cot|cotg|cossec)$/i.test(t))return '\\operatorname{'+t+'}';if(nor)return '\\mathrm{'+texEsc(t)+'}';return texEsc(t)}
+  if(/^m:(rPr|ctrlPr|fPr|radPr|dPr|naryPr|sSupPr|sSubPr|sSubSupPr|sPrePr|accPr|barPr|funcPr|limLowPr|limUppPr|mPr|eqArrPr|groupChrPr|boxPr|borderBoxPr|oMathParaPr|phantPr)$/.test(n)||n==='w:rPr'||n==='w:bookmarkStart'||n==='w:bookmarkEnd')return '';
+  if(n==='m:sSup')return '{'+sub(el,'m:e')+'}^{'+sub(el,'m:sup')+'}';
+  if(n==='m:sSub')return '{'+sub(el,'m:e')+'}_{'+sub(el,'m:sub')+'}';
+  if(n==='m:sSubSup')return '{'+sub(el,'m:e')+'}_{'+sub(el,'m:sub')+'}^{'+sub(el,'m:sup')+'}';
+  if(n==='m:sPre')return '{}_{'+sub(el,'m:sub')+'}^{'+sub(el,'m:sup')+'}{'+sub(el,'m:e')+'}';
+  if(n==='m:f'){const t=val(el,'m:fPr','m:type');const a=sub(el,'m:num'),b=sub(el,'m:den');return t==='lin'?a+'/'+b:t==='noBar'?'\\genfrac{}{}{0pt}{}{'+a+'}{'+b+'}':'\\frac{'+a+'}{'+b+'}'}
+  if(n==='m:rad'){const d=sub(el,'m:deg');const hide=val(el,'m:radPr','m:degHide');return (d&&hide!=='1'&&hide!=='on')?'\\sqrt['+d+']{'+sub(el,'m:e')+'}':'\\sqrt{'+sub(el,'m:e')+'}'}
+  if(n==='m:d'){const map=c=>c==null?null:c===''?'.':({'{':'\\{','}':'\\}','|':'|','‖':'\\|','⟨':'\\langle','⟩':'\\rangle','⌊':'\\lfloor','⌋':'\\rfloor','⌈':'\\lceil','⌉':'\\rceil'}[c]||c);
+    const b=map(val(el,'m:dPr','m:begChr'))??'(',e=map(val(el,'m:dPr','m:endChr'))??')',sep=val(el,'m:dPr','m:sepChr')??'|';
+    return '\\left'+b+K(el,'m:e').map(omml2tex).join(sep==='|'?'\\mid ':texEsc(sep))+'\\right'+e}
+  if(n==='m:nary'){const ch=val(el,'m:naryPr','m:chr')||'∫';const op={'∑':'\\sum','∏':'\\prod','∐':'\\coprod','∫':'\\int','∬':'\\iint','∭':'\\iiint','∮':'\\oint','⋃':'\\bigcup','⋂':'\\bigcap'}[ch]||ch;
+    const lo=sub(el,'m:sub'),hi=sub(el,'m:sup');const hs=val(el,'m:naryPr','m:subHide'),hp=val(el,'m:naryPr','m:supHide');
+    return op+((lo&&hs!=='1'&&hs!=='on')?'_{'+lo+'}':'')+((hi&&hp!=='1'&&hp!=='on')?'^{'+hi+'}':'')+'{'+sub(el,'m:e')+'}'}
+  if(n==='m:func'){const f=K(el,'m:fName')[0];const fn=f?cat(f):'';return (/^[A-Za-z]+$/.test(fn)?'\\operatorname{'+fn+'}':fn.replace(/^\\operatorname/,'\\operatorname'))+'{'+sub(el,'m:e')+'}'}
+  if(n==='m:limLow'){const e=sub(el,'m:e');return (/^(\\mathrm\{)?lim/.test(e)?'\\lim':'\\underset{'+sub(el,'m:lim')+'}{'+e+'}')+(/^(\\mathrm\{)?lim/.test(e)?'_{'+sub(el,'m:lim')+'}':'')}
+  if(n==='m:limUpp')return '\\overset{'+sub(el,'m:lim')+'}{'+sub(el,'m:e')+'}';
+  if(n==='m:acc'){const ch=val(el,'m:accPr','m:chr')||'\u0302';const c={'\u0302':'\\hat','\u0303':'\\tilde','\u0304':'\\bar','\u0305':'\\overline','\u0307':'\\dot','\u0308':'\\ddot','\u20D7':'\\vec','\u2192':'\\vec'}[ch]||'\\hat';return c+'{'+sub(el,'m:e')+'}'}
+  if(n==='m:bar'){const pos=val(el,'m:barPr','m:pos');return (pos==='bot'?'\\underline{':'\\overline{')+sub(el,'m:e')+'}'}
+  if(n==='m:groupChr'){const ch=val(el,'m:groupChrPr','m:chr')||'\u23DF';const pos=val(el,'m:groupChrPr','m:pos');return (ch==='\u23DE'||pos==='top'?'\\overbrace{':'\\underbrace{')+sub(el,'m:e')+'}'}
+  if(n==='m:eqArr')return '\\begin{aligned}'+K(el,'m:e').map(x=>omml2tex(x).replace(/&/g,'&')).join('\\\\')+'\\end{aligned}';
+  if(n==='m:m')return '\\begin{matrix}'+K(el,'m:mr').map(r=>K(r,'m:e').map(omml2tex).join('&')).join('\\\\')+'\\end{matrix}';
+  if(n==='m:box'||n==='m:borderBox'||n==='m:phant')return sub(el,'m:e');
+  if(n==='m:e'&&!el.children.length)return '';
+  return cat(el);
+}
 function parsePara(p,depth){
-  let text='',html='',bold=[],ital=[],sup='';const imgs=[];
+  let text='',html='',bold=[],ital=[],sup='';const imgs=[],maths=[];let ole=0;
   let curB='',curI='';
   const flush=()=>{if(curB.trim())bold.push(curB.trim());if(curI.trim())ital.push(curI.trim());curB='';curI=''};
   // percorre o parágrafo na ordem: textos, símbolos e equações
@@ -279,7 +331,9 @@ function parsePara(p,depth){
     else if(n==='w:pPr'||n==='w:del'||n==='w:moveFrom'||n==='w:proofErr'||n==='w:bookmarkStart'||n==='w:bookmarkEnd')continue;
     else walkP(c)}})(p);
   for(const r of runs){
-    if(r.nodeName==='m:oMath'||r.nodeName==='m:oMathPara'){const o=omml(r);text+=o.t;html+=o.h;sup+=o.t;continue}
+    if(r.nodeName==='m:oMath'||r.nodeName==='m:oMathPara'){const o=omml(r);let tex='';try{tex=omml2tex(r)}catch(e){tex=''}
+      const id=MATHS.length;MATHS.push({tex,t:o.t,h:o.h,display:r.nodeName==='m:oMathPara'});maths.push(id);
+      text+=o.t;html+=`<span data-math="${id}">${o.h}</span>`;continue}
     const rPr=kid(r,'w:rPr');const b=onOff(rPr,'w:b'),i=onOff(rPr,'w:i');
     const va=kid(rPr,'w:vertAlign')?.getAttribute('w:val');
     for(const c of r.children){
@@ -291,6 +345,7 @@ function parsePara(p,depth){
         if(i)curI+=t;else if(curI){ital.push(curI.trim());curI=''}
       }else if(n==='w:sym'){const ch=symChar(c);text+=ch;let s=esc(ch);if(va==='superscript')s=`<sup>${s}</sup>`;else if(va==='subscript')s=`<sub>${s}</sub>`;if(i)s=`<i>${s}</i>`;if(b)s=`<b>${s}</b>`;html+=s}
       else if(n==='w:noBreakHyphen'){text+='-';html+='-'}
+      else if(n==='w:object'){ole++}
       else if(n==='w:br'||n==='w:cr'){text+='\n';html+='<br>'}
       else if(n==='w:tab'){text+=' ';html+=' '}
       else if(n==='w:drawing'||n==='mc:AlternateContent'||n==='w:pict'){
@@ -314,7 +369,7 @@ function parsePara(p,depth){
   const tw2em=t=>(t||0)/20/fpt;
   const line=lineMult||lineEm/FONT_SINGLE;
   const indentCm=P.firstLine?P.firstLine/567:(P.hanging?-P.hanging/567:0);
-  return {k:'p',t:text,html,imgs,bold,ital,sup,d:depth,jc,line,lineEm,beforeEm:tw2em(P.before),afterEm:tw2em(P.after),indentCm,leftCm:(P.left||0)/567,style:styleId,contextual:!!P.contextual,after:tw2em(P.after)};
+  return {k:'p',t:text,html,imgs,maths,ole,bold,ital,sup,d:depth,jc,line,lineEm,beforeEm:tw2em(P.before),afterEm:tw2em(P.after),indentCm,leftCm:(P.left||0)/567,style:styleId,contextual:!!P.contextual,after:tw2em(P.after)};
 }
 function parseTable(tbl,depth){
   const rows=[],grid=[];const open={};   // open[col] = célula que iniciou mesclagem vertical
@@ -395,6 +450,7 @@ async function readDocx(file){
     const path='word/'+tg.replace(/^\.?\//,'').replace(/^word\//,'');const f=zip.file(path);
     if(f&&/\.(png|jpe?g|gif|bmp|svg|emf|wmf)$/i.test(tg)){const ext=tg.split('.').pop().toLowerCase();media[rid]={b64:await f.async('base64'),mime:ext==='svg'?'image/svg+xml':'image/'+(ext==='jpg'?'jpeg':ext),name:tg}}
   }
+  MATHS.length=0;
   const items=[];walkDocx(doc.getElementsByTagName('w:body')[0],0,items);
   const qs=segmentWord(items);
   const jc=(docXml.match(/<w:jc w:val="both"/g)||[]).length,jcAll=(docXml.match(/<w:jc w:val=/g)||[]).length;
@@ -595,8 +651,33 @@ function restoreItalic(out,w){
   }
   return out;
 }
+/* Equação -> imagem PNG (MathJax desenha a partir do LaTeX; o canvas transforma em imagem) */
+let MJ=null;
+function loadMathJax(){
+  if(MJ)return MJ;
+  MJ=new Promise((res,rej)=>{
+    window.MathJax={startup:{typeset:false},svg:{fontCache:'none'}};
+    const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.js';sc.async=true;
+    sc.onload=()=>window.MathJax.startup.promise.then(()=>res(window.MathJax),rej);sc.onerror=()=>rej(new Error('Não foi possível carregar o desenhador de equações.'));
+    document.head.appendChild(sc);
+  });
+  return MJ;
+}
+async function mathToPng(tex,display){
+  const MJx=await loadMathJax();
+  const node=await MJx.tex2svgPromise(tex,{display:!!display,em:16,ex:8,containerWidth:900});
+  const svg=node.querySelector('svg');if(!svg)throw new Error('svg');
+  const ex=8.6;const wEx=parseFloat(svg.getAttribute('width')),hEx=parseFloat(svg.getAttribute('height'));
+  const w=Math.max(1,Math.ceil(wEx*ex)),h=Math.max(1,Math.ceil(hEx*ex));
+  svg.setAttribute('width',w);svg.setAttribute('height',h);svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('color','#000');svg.style.color='#000';
+  const src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(svg));
+  const img=await new Promise((r,j)=>{const im=new Image();im.onload=()=>r(im);im.onerror=j;im.src=src});
+  const pad=4,sc=2;const cv=document.createElement('canvas');cv.width=(w+pad*2)*sc;cv.height=(h+pad*2)*sc;
+  const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(img,pad*sc,pad*sc,w*sc,h*sc);
+  return {b64:cv.toDataURL('image/png').split(',')[1],w:w+pad*2,h:h+pad*2};
+}
 /* Refaz o enunciado inteiro a partir do Word (texto, caracteres, tabelas, imagens, espaçamento) */
-function wordToMoodle(w,mSrcs,media,opts={}){
+async function wordToMoodle(w,mSrcs,media,opts={},qname='q'){
   const blocks=[];let pend=0,prevAfter=0,prevPara=null;
   const isEmpty=e=>e.k==='p'&&!norm(e.t)&&!e.imgs.length;
   for(const e of w.enun){
@@ -609,12 +690,13 @@ function wordToMoodle(w,mSrcs,media,opts={}){
       let hh=e.html;const lead=(hh.match(/^(\s*<br>)+/)||[''])[0].split('<br>').length-1;const trail=(hh.match(/(<br>\s*)+$/)||[''])[0].split('<br>').length-1;
       hh=hh.replace(/^(\s*<br>)+/,'').replace(/(<br>\s*)+$/,'');
       gap+=lead*(e.lineEm||FONT_SINGLE);
-      blk={para:e,html:hh,text:norm(e.t.replace(/\n/g,' '))+(e.imgs.length?' [IMG]':''),trail:trail*(e.lineEm||FONT_SINGLE)}}
+      const onlyMath=(e.maths||[]).length&&!norm(hh.replace(/<span data-math[\s\S]*?<\/span>/g,'').replace(/<[^>]+>/g,''));
+      blk={para:e,html:hh,text:norm(e.t.replace(/\n/g,' '))+(e.imgs.length?' [IMG]':'')+(onlyMath?' [EQ]':''),onlyMath,trail:trail*(e.lineEm||FONT_SINGLE)}}
     const last=blocks[blocks.length-1];
     if(last){
       last.mb=gap;
       const a=last.text,b=blk.text;
-      const nearObj=/\[(IMG|TABELA)\]/.test(a+' '+b);
+      const nearObj=/\[(IMG|TABELA|EQ)\]/.test(a+' '+b);
       const capPair=(/\[(IMG|TABELA)\]/.test(a)&&CAP_SRC.test(b))||(CAP_TITLE.test(a)&&/\[(IMG|TABELA)\]/.test(b));
       const isLabel=a.length<60&&!/[.;!?]$/.test(a);
       if(opts.minGap&&!capPair&&gap<0.5&&(nearObj||!isLabel)&&!(IS_ITEM.test(a)&&IS_ITEM.test(b))&&!(looksCitation(a)&&looksCitation(b)))last.mb=Math.max(gap,opts.minGap);
@@ -629,7 +711,7 @@ function wordToMoodle(w,mSrcs,media,opts={}){
   const fx=n=>String(Math.round(n*100)/100);
   let html=blocks.map(b=>{
     if(b.table)return b.html.replace('<table>',`<table style="border-collapse:collapse;margin:0 auto ${fx(b.mb)}em auto">`);
-    const pr=b.para;const onlyImg=pr.imgs.length&&!norm(pr.t);
+    const pr=b.para;const onlyImg=(pr.imgs.length&&!norm(pr.t))||b.onlyMath;
     const al=(b.cap||onlyImg)?'center':({both:'justify',distribute:'justify',center:'center',right:'right',end:'right'}[pr.jc]||'left');
     const lh=Math.max(1,Math.min(3.5,pr.lineEm||1.725));
     const txt=b.text;
@@ -647,7 +729,21 @@ function wordToMoodle(w,mSrcs,media,opts={}){
     else{const md=media[rid];if(!md){k++;return ''}const ext=(md.name.split('.').pop()||'png').toLowerCase();const name=`imagem_word_${k+1}.${ext}`;newFiles.push({name,b64:md.b64});src='@@PLUGINFILE@@/'+name}
     k++;return `<img src="${src}" alt=""${px?` width="${px}"`:''} class="img-fluid">`;
   });
-  return {html,newFiles};
+  // texto para conferência (equação como texto) e equações como imagem
+  const checkHtml=html.replace(/<span data-math="\d+">([\s\S]*?)<\/span>/g,'$1');
+  const ids=[...html.matchAll(/<span data-math="(\d+)">/g)].map(x=>+x[1]);
+  let eqN=0;const eqFail=[];
+  if(opts.mathImg&&ids.length){
+    const slug=String(qname).replace(/[^A-Za-z0-9]+/g,'').slice(0,20)||'q';
+    for(const id of ids){
+      const M=MATHS[id];let rep;
+      try{if(!M.tex)throw 0;const r=await mathToPng(M.tex,M.display);eqN++;const name=`equacao_${slug}_${eqN}.png`;newFiles.push({name,b64:r.b64});
+        rep=`<img src="@@PLUGINFILE@@/${name}" alt="${esc(M.t)}" width="${r.w}" height="${r.h}" class="equacao" style="vertical-align:middle">`}
+      catch(e){eqFail.push(M.t);rep=M.h}
+      html=html.replace(new RegExp(`<span data-math="${id}">[\\s\\S]*?<\\/span>`),()=>rep);
+    }
+  }else html=checkHtml;
+  return {html,checkHtml,newFiles,eqN,eqFail};
 }
 const textOnly=h=>ns(h.replace(/<img[^>]*>/gi,'').replace(/<[^>]+>/g,''));
 function cleanAnswerHtml(h){return h.replace(/(\s|&nbsp;)*<br\s*\/?>(\s|&nbsp;)*<\/p>/gi,'</p>').replace(/(\s|&nbsp;)+<\/p>/gi,'</p>')}
@@ -656,9 +752,9 @@ function sameContent(a,b){
   const c=(h,re)=>(h.match(re)||[]).length;
   return t(a)===t(b)&&c(a,/<img\b/gi)===c(b,/<img\b/gi)&&c(a,/<table\b/gi)===c(b,/<table\b/gi);
 }
-function buildFixedXml(xmlText,moodle,word,newCat,opts={}){
+async function buildFixedXml(xmlText,moodle,word,newCat,opts={}){
   const doc=new DOMParser().parseFromString(xmlText,'application/xml');
-  const log={changed:0,kept:[],total:0,restored:[],tables:[]};
+  const log={changed:0,kept:[],total:0,restored:[],tables:[],eqs:[],eqFail:[],dupKept:[]};
   const byNum=new Map();if(word)word.qs.forEach(w=>byNum.set(w.n,w));
   let k=0;
   for(const q of doc.getElementsByTagName('question')){
@@ -673,9 +769,9 @@ function buildFixedXml(xmlText,moodle,word,newCat,opts={}){
     // 1º: refaz a partir do Word (recupera tabelas e caracteres); confere que o texto bate com o Word
     if(w&&w.enun.some(e=>e.k==='table'||norm(e.t)||e.imgs?.length)){
       try{const mSrcs=[...orig.matchAll(/<img\b[^>]*src="([^"]+)"/gi)].map(x=>x[1]);
-        const r=wordToMoodle(w,mSrcs,word.media,opts);
-        const wt=ns(wlines(w.enun).filter(Boolean).join('')),ft=ns(mlines(r.html).filter(Boolean).join(''));
-        if(wt===ft){fixed=r.html;newFiles=r.newFiles;
+        const r=await wordToMoodle(w,mSrcs,word.media,opts,m.name);
+        const wt=ns(wlines(w.enun).filter(Boolean).join('')),ft=ns(mlines(r.checkHtml).filter(Boolean).join(''));
+        if(wt===ft){fixed=r.html;newFiles=r.newFiles;if(r.eqN)log.eqs.push(m.name);if(r.eqFail.length)log.eqFail.push(m.name);
           if(textOnly(orig)!==textOnly(fixed))log.restored.push(m.name);
           if((orig.match(/<table\b/gi)||[]).length<(fixed.match(/<table\b/gi)||[]).length)log.tables.push(m.name)}
       }catch(e){console.error(e)}
@@ -689,10 +785,14 @@ function buildFixedXml(xmlText,moodle,word,newCat,opts={}){
     for(const f of newFiles){const fe=doc.createElement('file');fe.setAttribute('name',f.name);fe.setAttribute('path','/');fe.setAttribute('encoding','base64');fe.textContent=f.b64;qtEl.appendChild(fe)}
     // alternativas: texto do Word quando a ordem e o gabarito batem; senão, só limpa
     const ans=kids(q,'answer');
+    const hasDup=dupCheck(ans.map(a=>(kid(a,'text')?.textContent||'').replace(/<[^>]+>/g,' ')),'Moodle').length||(w&&dupCheck(w.alts.map(a=>a.t),'Word').length);
+    if(hasDup){log.dupKept.push(m.name)}
+    else{
     const altOk=w&&w.alts.length===ans.length&&w.alts.every((a,i)=>a.ok===(parseFloat(ans[i].getAttribute('fraction'))>0))&&w.alts.every(a=>!/data-rid/.test(a.html)&&norm(a.t));
     ans.forEach((a,i)=>{const at=kid(a,'text');if(!at)return;const o=at.textContent;
       if(altOk){const f=`<p>${w.alts[i].html}</p>`;if(f!==o){setText(at,f);if(textOnly(o)!==textOnly(f)&&!log.restored.includes(m.name))log.restored.push(m.name)}}
       else{const f=cleanAnswerHtml(o);if(f!==o&&ns(f.replace(/<[^>]+>/g,''))===ns(o.replace(/<[^>]+>/g,'')))setText(at,f)}});
+    }
   }
   let out=new XMLSerializer().serializeToString(doc);
   if(!/^<\?xml/.test(out))out='<?xml version="1.0" encoding="UTF-8"?>\n'+out;
@@ -713,6 +813,7 @@ function refFlags(paras){
     inRef=false;return false});
 }
 const CITE_ITAL=/^(et\s*al\.?|in:?|apud|ibid\.?|op\.?\s*cit\.?|anais\.*|ata\.*|\(org\.?\)|\(orgs?\.?\)|\(ed\.?\)|\(eds\.?\))$/i;
+function bagSim(a,b){a=ns(a);b=ns(b);if(!a||!b)return 0;const c={};for(const ch of a)c[ch]=(c[ch]||0)+1;let common=0;for(const ch of b)if(c[ch]>0){c[ch]--;common++}return common/Math.max(a.length,b.length)}
 function similar(a,b){a=ns(a);b=ns(b);if(!a||!b)return 0;let p=0;while(p<a.length&&p<b.length&&a[p]===b[p])p++;let s=0;while(s<a.length-p&&s<b.length-p&&a[a.length-1-s]===b[b.length-1-s])s++;return (p+s)/Math.max(a.length,b.length)}
 function diffSnip(a,b){let p=0;while(p<a.length&&p<b.length&&a[p]===b[p])p++;let s=0;while(s<a.length-p&&s<b.length-p&&a[a.length-1-s]===b[b.length-1-s])s++;
   const cut=(x)=>{const st=Math.max(0,p-30),en=Math.min(x.length,x.length-s+30);return (st>0?'…':'')+x.slice(st,en)+(en<x.length?'…':'')};return [cut(a),cut(b)]}
@@ -744,14 +845,17 @@ async function analyze(word,moodle){
     mqs.forEach(m=>{if(!used.has(m))pairs.push({w:null,m})});
   }else mqs.forEach(m=>pairs.push({w:null,m}));
 
-  const flatQs=new Set(),charQs=new Set();
+  const flatQs=new Set(),charQs=new Set(),eqQs=new Set(),dupQs=new Set();
   let italLost=0,gluedTotal=0;const gluedQs=[],biggerQs=[],smallerQs=[];
   for(const {w,m} of pairs){
     const Q={n:w?w.n:(m.num??0),name:m?m.name:'(não encontrada no Moodle)',area:w?.area||'',tipo:w?.tipo||'',issues:[]};
     const add=(sev,cat,title,detail='',lines)=>Q.issues.push({sev,cat,title,detail,lines});
     if(!m){add('erro','Texto','Questão do Word não encontrada no Moodle',`A questão ${w.n} existe no Word, mas não apareceu no XML exportado.`);Q.wordHtml=wordHtml(w,word.media);report.questions.push(Q);continue}
     if(m.type!=='multichoice')add('info','Alternativas',`Tipo de questão: ${m.type}`,'A comparação de alternativas foi feita só para múltipla escolha.');
-    const h=m.html;
+    // equações já inseridas como imagem contam como o texto delas (descrição da imagem)
+    const eqImgs=(m.html.match(/<img\b[^>]*class="[^"]*equacao[^"]*"[^>]*>/gi)||[]).length;
+    const h=m.html.replace(/<img\b[^>]*class="[^"]*equacao[^"]*"[^>]*>/gi,t=>esc(decode((t.match(/alt="([^"]*)"/)||[])[1]||'')));
+    const wMaths=w?w.enun.flatMap(e=>e.k==='p'?(e.maths||[]):[]).map(i=>MATHS[i]).filter(Boolean):[];
     // ----- Texto
     if(w){
       const wl=wlines(w.enun),ml=mlines(h);
@@ -771,9 +875,12 @@ async function analyze(word,moodle){
         else{
           // separa diferenças de caracteres (símbolos, letras gregas, fórmulas) de trechos faltando
           const pairs=[],usedE=new Set(),rest=[];
-          for(const a of miss){let best=-1,bs=0;extra.forEach((b,j)=>{if(usedE.has(j))return;const sc=similar(a,b);if(sc>bs){bs=sc;best=j}});
+          const mathTx=wMaths.map(x=>ns(x.t)).filter(x=>x.length>2);
+          for(const a of miss){if(mathTx.some(x=>ns(a).includes(x))){continue}
+            let best=-1,bs=0;extra.forEach((b,j)=>{if(usedE.has(j))return;const sc=similar(a,b);if(sc>bs){bs=sc;best=j}});
             if(best>=0&&bs>=0.6){usedE.add(best);pairs.push([a,extra[best]])}else rest.push(a)}
-          const restE=extra.filter((b,j)=>!usedE.has(j));
+          // linhas do Moodle que são a equação digitada (mesmos caracteres da equação do Word) ficam para o aviso de Fórmulas
+          const restE=extra.filter((b,j)=>!usedE.has(j)&&!mathTx.some(x=>bagSim(x,b)>=0.6));
           if(pairs.length){charQs.add(Q.name);add('erro','Texto',`Caracteres diferentes do Word em ${pairs.length} trecho(s)`,'Símbolos, letras ou fórmulas que não chegaram iguais ao Moodle (ex.: µ, ±, °, ≥, letras gregas, sobrescritos). A correção automática usa o texto do Word.',pairs.flatMap(([a,b])=>{const [x,y]=diffSnip(a,b);return [['w',x],['m',y]]}))}
           if(rest.length||restE.length)add('erro','Texto',`Texto do enunciado diferente do Word (${rest.length} trecho(s) do Word sem correspondência)`,'Em verde, como está no Word. Em vermelho, como ficou no Moodle.',[...rest.map(x=>['w',x]),...restE.map(x=>['m',x])]);
         }
@@ -826,8 +933,12 @@ async function analyze(word,moodle){
     if(mqs.length>3&&(/<p[\s>]/i.test(h))!==majorityP)add('atencao','Espaçamento','HTML em formato diferente das demais questões',majorityP?'Esta questão usa quebras de linha enquanto a maioria usa parágrafos.':'Esta questão usa parágrafos (<p>), como texto colado direto do Word, enquanto a maioria usa quebras de linha. O espaçamento entre parágrafos fica visivelmente diferente das outras.');
     const wordCss=(h.match(/mso-[a-z-]+|font-family|font-size/gi)||[]);
     if(wordCss.length)add('atencao','Formatação','Estilos herdados do Word no HTML',`Encontrado: ${[...new Set(wordCss.map(s=>s.toLowerCase()))].slice(0,6).join(', ')}. Isso pode mudar fonte, tamanho ou espaçamento em relação ao tema do Moodle.`);
+    // ----- Fórmulas
+    if(wMaths.length){const native=/\\\(|\\\[|\$\$|<math\b/i.test(h);
+      if(eqImgs<wMaths.length&&!native){eqQs.add(Q.name);add('atencao','Fórmulas',`${wMaths.length===1?'Equação do Word chegou':wMaths.length+' equações do Word chegaram'} como texto digitado`,'No Moodle a equação aparece em uma linha só, sem frações, somatório, raízes e expoentes montados como no Word. A correção automática insere cada equação como imagem, igual à do Word: '+wMaths.slice(0,3).map(x=>'“'+short(x.t,70)+'”').join(', '))}}
+    if(w){const ole=w.enun.reduce((n,e)=>n+(e.ole||0),0);if(ole)add('atencao','Fórmulas',`${ole} objeto(s) do Word (equação antiga ou objeto incorporado)`,'São objetos que a ferramenta não consegue converter, como equações feitas no editor antigo (Equation 3.0). Confira essa questão no Moodle e, se faltar algo, refaça a equação no editor de equações atual do Word.')}
     // ----- Imagens
-    const imgTags=[...h.matchAll(/<img\b[^>]*>/gi)].map(x=>x[0]);
+    const imgTags=[...h.matchAll(/<img\b[^>]*>/gi)].map(x=>x[0]);   // (as equações em imagem já foram tiradas de h)
     const refs=[...h.matchAll(/@@PLUGINFILE@@\/([^"'\s>?]+)/g)].map(x=>{try{return decodeURIComponent(x[1])}catch{return x[1]}});
     const fileNames=new Set(m.files.map(f=>f.name));
     for(const r of refs)if(!fileNames.has(r))add('erro','Imagens',`Imagem “${r}” referenciada, mas o arquivo não está na questão`,'Ela vai aparecer quebrada no Moodle.');
@@ -887,10 +998,11 @@ async function analyze(word,moodle){
     if(m.type==='multichoice'){
       const nFull=mAlts.filter(a=>a.full).length;
       if(m.single&&nFull!==1)add('erro','Alternativas',`${nFull} alternativa(s) marcada(s) como 100% correta`,'Questão de resposta única deveria ter exatamente uma.');
-      const seen=new Set();mAlts.forEach((a,i)=>{const k=a.t.toLowerCase();if(seen.has(k))add('erro','Alternativas',`Alternativa ${'abcdefgh'[i]} duplicada`,short(a.t));seen.add(k)});
+      dupCheck(mAlts.map(a=>a.t),'Moodle').forEach(d=>{dupQs.add(Q.name);(Q.dups=Q.dups||[]).push({...d,where:'Moodle'});add(d.sev,'Alternativas',d.title,d.detail)});
       mAlts.forEach((a,i)=>{if(!a.t&&!/<img/i.test(a.html))add('erro','Alternativas',`Alternativa ${'abcdefgh'[i]} vazia`)});
       mAlts.forEach((a,i)=>{if(/^\s*[a-eA-E][\)\.\-]\s/.test(a.t))add('atencao','Alternativas',`Alternativa ${'abcdefgh'[i]} com letra digitada no texto`,'O Moodle já numera as alternativas, então a letra aparece duas vezes.')});
     }
+    if(w)dupCheck(w.alts.map(a=>a.t),'Word').forEach(d=>{dupQs.add(Q.name);(Q.dups=Q.dups||[]).push({...d,where:'Word'});add(d.sev,'Alternativas',d.title+' (já no Word)',d.detail)});
     if(w){
       if(w.alts.length!==mAlts.length)add('erro','Alternativas',`Word tem ${w.alts.length} alternativas, Moodle tem ${mAlts.length}`);
       const n=Math.min(w.alts.length,mAlts.length);
@@ -915,7 +1027,7 @@ async function analyze(word,moodle){
       if(sup&&!mS.includes(sup))add('atencao','Formatação','Sobrescrito/subscrito perdido','Ex.: unidades como m² ou fórmulas como H₂O podem ter virado texto normal.');
     }
     // pré-visualizações
-    Q.moodleHtml=moodleHtmlWithFiles(h,m.files);
+    Q.moodleHtml=moodleHtmlWithFiles(m.html,m.files);
     Q.moodleAlts=mAlts.map(a=>({ok:a.ok,html:sanitize(moodleHtmlWithFiles(a.html,a.files)),fb:a.fb}));
     Q.moodleGen=norm(m.gen.replace(/<[^>]+>/g,' '));
     if(w){Q.wordHtml=wordHtml(w,word.media);Q.wordAlts=w.alts.map(a=>({ok:a.ok,html:a.html||esc(a.t)}));Q.wordFb=w.fb}
@@ -925,6 +1037,7 @@ async function analyze(word,moodle){
   report.questions.sort((a,b)=>a.n-b.n);
   const N=report.questions.length;
   if(word){
+    if(eqQs.size)report.global.push(['atencao',`Equações do Word que chegaram como texto digitado em ${eqQs.size} questão(ões): ${[...eqQs].join(', ')}. A correção automática insere as equações como imagem, iguais às do Word.`]);
     if(flatQs.size)report.global.push(['erro',`Tabela que virou texto solto em ${flatQs.size} questão(ões): ${[...flatQs].join(', ')}. O conversor colocou cada célula numa linha. A correção automática monta as tabelas a partir do Word.`]);
     if(charQs.size)report.global.push(['erro',`Caracteres diferentes do Word em ${charQs.size} questão(ões): ${[...charQs].join(', ')}. Símbolos, letras gregas, sobrescritos ou fórmulas não chegaram iguais. A correção automática usa o texto do Word.`]);
     if(gluedQs.length)report.global.push(['atencao',`Parágrafos colados em ${gluedQs.length} de ${N} questões (${gluedTotal} no total). No Word são parágrafos separados, mas o conversor os juntou com uma quebra de linha simples, sem espaço entre eles. Para o aluno, o texto vira um bloco único. A correção é o conversor gerar cada parágrafo do Word como parágrafo (<p>) no XML.`]);
@@ -942,7 +1055,28 @@ async function analyze(word,moodle){
     if(false)report.global.push(['info',`O Word usa ${[word.justified?'texto justificado':'',word.line15?'espaçamento entre linhas de 1,5':''].filter(Boolean).join(' e ')}. O Moodle aplica o padrão do tema (alinhado à esquerda), então o texto nunca vai ficar idêntico ao Word nesse aspecto. Isso é esperado e não é erro de importação.`]);
     const wN=word.qs.length;if(wN!==mqs.length)report.global.push(['erro',`O Word tem ${wN} questões e o XML do Moodle tem ${mqs.length}.`]);
   }
+  // (as duplicidades aparecem no alerta em destaque no topo do relatório)
   return report;
+}
+/* alternativas repetidas (iguais ignorando maiúsculas, espaços e pontuação) ou quase iguais */
+function dupCheck(texts,where){
+  const out=[];const key=t=>norm(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9%°µ±≤≥=+\-]/g,'');
+  const L='abcdefghij';const K=texts.map(key);
+  const lst=a=>a.length===2?a.join(' e '):a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+  const NAME={2:'duplicada',3:'triplicada',4:'quadruplicada',5:'quintuplicada'};
+  // iguais: agrupa (a, c e d iguais = triplicada)
+  const groups={};K.forEach((k,i)=>{if(k)(groups[k]=groups[k]||[]).push(i)});
+  const inGroup=new Set();
+  for(const g of Object.values(groups))if(g.length>1){g.forEach(i=>inGroup.add(i));const letters=g.map(i=>L[i]);
+    out.push({sev:'erro',dup:true,kind:NAME[g.length]||`repetida ${g.length} vezes`,letters,text:norm(texts[g[0]]),
+      title:`Alternativa ${NAME[g.length]||'repetida '+g.length+' vezes'}: ${lst(letters)} iguais`,detail:`${g.length===2?'As duas têm':'Todas têm'} o mesmo texto: “${short(norm(texts[g[0]]),110)}”. Não foi alterado automaticamente: encaminhe para correção.`})}
+  // quase iguais (diferem em poucos caracteres)
+  for(let i=0;i<texts.length;i++)for(let j=i+1;j<texts.length;j++){
+    const a=K[i],b=K[j];if(!a||!b||a===b)continue;
+    if(Math.min(a.length,b.length)>25&&similar(a,b)>=0.9)out.push({sev:'erro',dup:true,kind:'quase igual',letters:[L[i],L[j]],text:norm(texts[i])+' | '+norm(texts[j]),
+      title:`Alternativas ${L[i]} e ${L[j]} quase iguais`,detail:`Mudam só em poucos caracteres. ${L[i]}: “${short(norm(texts[i]),90)}” · ${L[j]}: “${short(norm(texts[j]),90)}”. Não foi alterado automaticamente: encaminhe para correção.`});
+  }
+  return out;
 }
 function wordHtml(w,media){
   let h=w.enun.map(e=>e.k==='table'?e.html:`<p style="text-align:${{both:'justify',center:'center',right:'right'}[e.jc]||'left'};line-height:${(e.lineEm||1.15).toFixed(3)};margin:${(e.beforeEm||0).toFixed(2)}em 0 ${(e.afterEm||0).toFixed(2)}em ${(e.leftCm||0).toFixed(2)}cm;text-indent:${(e.indentCm||0).toFixed(2)}cm">${e.html||'&nbsp;'}</p>`).join('');
@@ -982,6 +1116,29 @@ $('#run').addEventListener('click',async()=>{
   $('#run').disabled=!files.xml;
 });
 function worst(q){return q.issues.reduce((m,i)=>Math.max(m,SEVRANK[i.sev]),0)}
+function dupRequestText(R){
+  const rows=R.questions.filter(q=>q.dups&&q.dups.length);
+  const L=['Solicitação de correção: alternativas duplicadas','',`Disciplina/arquivo: ${R.source?.xml||''}`,'',
+    'As questões abaixo têm alternativas repetidas ou quase iguais. Elas não foram alteradas automaticamente. Por favor, revisem e enviem o texto correto das alternativas:',''];
+  for(const q of rows){L.push(`${q.name}${q.area?' ('+q.area+')':''}:`);for(const d of q.dups)L.push(`  - ${d.title.replace(/:.*/, '')}: alternativas ${d.letters.join(', ')} — ${d.where==='Word'?'já está assim no Word':'aparece assim no Moodle'} — “${short(d.text,160)}”`);L.push('')}
+  return L.join('\n');
+}
+function renderDupAlert(R){
+  const box=$('#dupAlert');const rows=R.questions.filter(q=>q.dups&&q.dups.length);
+  if(!rows.length){box.hidden=true;box.innerHTML='';return}
+  const n=rows.length;
+  box.hidden=false;
+  box.innerHTML=`<h2><span class="ico" aria-hidden="true">!</span>Alternativas duplicadas em ${n} ${n===1?'questão':'questões'}: encaminhar para correção</h2>
+    <p>Foram encontradas alternativas repetidas (duplicadas, triplicadas…) ou quase iguais. <b>Nada disso foi alterado automaticamente.</b> A pessoa responsável pela disciplina deve conferir e solicitar a correção à equipe responsável pelo conteúdo.</p>
+    <div class="duptable"><table><thead><tr><th>Questão</th><th>Situação</th><th>Alternativas</th><th>Onde</th><th>Texto</th></tr></thead><tbody>
+    ${rows.flatMap(q=>q.dups.map(d=>`<tr><td class="q">${esc(q.name)}</td><td><span class="dupkind">${esc(d.kind)}</span></td><td>${esc(d.letters.join(', '))}</td><td>${d.where==='Word'?'Já no Word':'No Moodle'}</td><td>${esc(short(d.text,140))}</td></tr>`)).join('')}
+    </tbody></table></div>
+    <button class="dupbtn" id="dupCopy">Copiar solicitação de correção</button>
+    <textarea id="dupBox" hidden style="width:100%;height:160px" readonly></textarea>`;
+  $('#dupCopy').addEventListener('click',async()=>{const t=dupRequestText(R);
+    try{await navigator.clipboard.writeText(t);status('Solicitação copiada. Cole no e-mail ou chamado para a equipe responsável.')}
+    catch{const b=$('#dupBox');b.hidden=false;b.value=t;b.focus();b.select();status('Copie o texto selecionado (Ctrl+C).')}});
+}
 function render(){
   const R=REPORT;if(!R)return;
   const N=R.questions.length;
@@ -991,6 +1148,7 @@ function render(){
     for(const [c,s] of Object.entries(seen)){catCount[c].n++;catCount[c].sev=Math.max(catCount[c].sev,SEVRANK[s])}}
   const sevName=r=>r>=3?'erro':r===2?'atencao':r===1?'info':'ok';
   const S=$('#summary');S.hidden=false;$('#intro').hidden=true;
+  renderDupAlert(R);
   S.innerHTML=`<div class="sumtop"><span class="big">${N} questões</span>
     <span><span class="dot erro" style="display:inline-block"></span> <b>${withErr}</b> <span class="sub">com erro</span></span>
     <span><span class="dot atencao" style="display:inline-block"></span> <b>${withWarn}</b> <span class="sub">só com pontos de atenção</span></span>
@@ -1037,7 +1195,8 @@ $('#onlyIssues').addEventListener('change',()=>{catFilter=null;render()});
 $('#expandAll').addEventListener('click',()=>{expandAll=!expandAll;$('#expandAll').textContent=expandAll?'Recolher tudo':'Expandir tudo';renderList()});
 $('#copy').addEventListener('click',async()=>{
   const R=REPORT;if(!R)return;
-  const lines=[`Curadoria Word × Moodle — ${R.questions.length} questões`,...R.global.map(([s,t])=>`[${SEVLBL[s]}] ${t}`),''];
+  const dupTxt=R.questions.some(q=>q.dups&&q.dups.length)?dupRequestText(R)+'\n----\n':'';
+  const lines=[dupTxt+`Curadoria Word × Moodle — ${R.questions.length} questões`,...R.global.map(([s,t])=>`[${SEVLBL[s]}] ${t}`),''];
   for(const q of R.questions){const is=q.issues.filter(i=>i.sev!=='info');if(!is.length)continue;lines.push(`${q.name||'Q'+q.n}${q.area?' ('+q.area+')':''}`);for(const i of is)lines.push(`  - [${SEVLBL[i.sev]}] ${i.cat}: ${i.title}${i.detail?' — '+i.detail:''}`)}
   const txt=lines.join('\n');
   try{await navigator.clipboard.writeText(txt);status('Relatório copiado.')}catch{const b=$('#copyBox');b.hidden=false;b.value=txt;b.focus();b.select();status('Copie o texto selecionado abaixo (Ctrl+C).')}
@@ -1046,13 +1205,13 @@ $('#copy').addEventListener('click',async()=>{
 $('#fixBtn').addEventListener('click',async()=>{
   if(!LAST)return;const btn=$('#fixBtn');btn.disabled=true;status('Corrigindo…');
   try{
-    const {xml,log}=buildFixedXml(LAST.xmlText,LAST.moodle,LAST.word,$('#newCat').checked,{indent:$('#indent').checked,minGap:$('#minGap').checked?1.15:0});
+    const {xml,log}=await buildFixedXml(LAST.xmlText,LAST.moodle,LAST.word,$('#newCat').checked,{indent:$('#indent').checked,minGap:$('#minGap').checked?1.15:0,mathImg:$('#mathImg').checked});
     window.__fixed=xml;
     const moodle2=readMoodle(xml);
     const rep=await analyze(LAST.word,moodle2);
     rep.source={docx:files.docx?.name||null,xml:'XML corrigido'};REPORT=rep;window.__report2=rep;catFilter=null;
     const b=$('#banner');b.hidden=false;
-    b.innerHTML=`<b>Correção aplicada em ${log.changed} de ${log.total} questões.</b> ${log.tables.length?`Tabelas montadas a partir do Word: ${esc(log.tables.join(', '))}. `:''}${log.restored.length?`Texto ou caracteres recuperados do Word: ${esc(log.restored.join(', '))}. `:''}${log.kept.length?`Mantidas sem alteração por segurança: ${esc(log.kept.join(', '))}. `:''}O relatório abaixo já é do XML corrigido.`;
+    b.innerHTML=`<b>Correção aplicada em ${log.changed} de ${log.total} questões.</b> ${log.tables.length?`Tabelas montadas a partir do Word: ${esc(log.tables.join(', '))}. `:''}${log.eqs.length?`Equações inseridas como imagem: ${esc(log.eqs.join(', '))}. `:''}${log.eqFail.length?`Equações que não puderam ser desenhadas (ficaram como texto formatado): ${esc(log.eqFail.join(', '))}. `:''}${log.restored.length?`Texto ou caracteres recuperados do Word: ${esc(log.restored.join(', '))}. `:''}${log.kept.length?`Mantidas sem alteração por segurança: ${esc(log.kept.join(', '))}. `:''}${log.dupKept.length?`<br><b style="color:var(--err)">Alternativas não alteradas por duplicidade: ${esc(log.dupKept.join(', '))}.</b> Elas continuam como estavam e precisam ser corrigidas pela equipe responsável. `:''}O relatório abaixo já é do XML corrigido.`;
     render();
     const base=(LAST.name||'questoes.xml').replace(/\.xml$/i,'');
     const zip=new JSZip();zip.file(base+' - corrigido.xml',xml);
