@@ -139,7 +139,7 @@ button{font:inherit;cursor:pointer}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Banco de questões · conferência pós-importação</div>
+    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 08/10 17h40</span></div>
     <h1>Curadoria Word × Moodle</h1>
     <p class="lede">Compare o Word original com o XML exportado do Moodle depois da importação. A ferramenta confere texto, espaçamento, imagens, tabelas, alternativas, gabarito e formatação, questão por questão. Feedback e dificuldade ficam de fora, porque não são importados para o Moodle. Os arquivos são lidos só no seu navegador e não são enviados para nenhum servidor.</p>
   </header>
@@ -658,6 +658,10 @@ function fixQuestionHtml(h,w,media,opts={}){
       // recuo: o do Word; só acrescenta 1,25 cm se a opção estiver marcada e o Word não tiver recuo
       let ind=al==='center'?0:(pr.indentCm||0);if(!ind&&opts.indent&&body)ind=1.25;
       const left=pr.leftCm||0;
+      if(pr.list&&!/class="marcador"/.test(p.html)){
+        const hang=Math.max(0.4,-(pr.indentCm||-0.63));
+        return `<p style="margin:0 0 ${fx(p.mb)}em;margin-left:${fx(Math.max(left,hang))}cm;text-indent:-${fx(hang)}cm;text-align:${al};line-height:${fx(lh)}"><span class="marcador" style="display:inline-block;min-width:${fx(hang)}cm;text-indent:0">${esc(pr.list.mk)}&nbsp;</span>${p.html.replace(/^\s*[•◦▪■●○➢➤✓–\-*·]\s+/,'')}</p>`;
+      }
       return `<p style="margin:0 0 ${fx(p.mb)}em${left>0.05?`;margin-left:${fx(left)}cm`:''};text-align:${al};line-height:${fx(lh)}${Math.abs(ind)>0.05?`;text-indent:${fx(ind)}cm`:''}">${p.html}</p>`;
     }).join('');
     return restoreItalic(out,w);
