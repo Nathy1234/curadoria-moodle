@@ -164,6 +164,7 @@ button{font:inherit;cursor:pointer}
       <li><b>Imagens:</b> quantidade, imagem faltando ou quebrada, imagem diferente da do Word, tamanho maior que no Word, imagem fora do centro e título (Figura…) e fonte (Fonte: …) da imagem fora do centro.</li>
       <li><b>Tabelas:</b> tabela do Word que virou texto solto no Moodle, quantidade, conteúdo das células e largura fixa que corta a tabela no celular.</li>
       <li><b>Fórmulas:</b> equações do Word que chegaram ao Moodle como texto digitado (sem frações, somatórios, raízes e expoentes montados) e objetos antigos do Word, como equações do Equation 3.0, que precisam ser conferidos.</li>
+      <li><b>Marcadores:</b> marcadores e numeração de listas do Word (•, ◦, ▪, ➢, ✓, 1., a), i., I. e outros, em qualquer nível) que não chegaram ao Moodle; a correção coloca o marcador, a numeração em sequência e o recuo da lista como no Word.</li>
       <li><b>Alternativas:</b> quantidade, texto e gabarito iguais ao Word, mais de uma correta, alternativa vazia, alternativas duplicadas, triplicadas ou quase iguais (no Moodle e no próprio Word), que aparecem num alerta em destaque no topo e nunca são alteradas automaticamente, e letra digitada no texto.</li>
       <li><b>Formatação:</b> negrito, itálico (fora das referências), sobrescrito e subscrito, alinhamento (justificado) e entrelinha em relação ao Word.</li>
     </ul>
@@ -208,7 +209,7 @@ const ns=s=>decode(s||'').replace(/[\s ]+/g,'');
 const kids=(el,n)=>el?[...el.children].filter(c=>c.nodeName===n):[];
 const kid=(el,n)=>kids(el,n)[0];
 const textOf=el=>el?[...el.getElementsByTagName('w:t')].map(t=>t.textContent).join(''):'';
-const CATS=['Texto','Fórmulas','Parágrafos','Espaçamento','Imagens','Tabelas','Alternativas','Formatação'];
+const CATS=['Texto','Fórmulas','Marcadores','Parágrafos','Espaçamento','Imagens','Tabelas','Alternativas','Formatação'];
 const SEVLBL={erro:'Erro',atencao:'Atenção',info:'Info'};
 const SEVRANK={erro:3,atencao:2,info:1};
 
@@ -231,7 +232,40 @@ function pPrProps(pPr){
     if(g('hanging')!=null){o.hanging=+g('hanging');o.firstLine=0}
     const l=g('left')??g('start');if(l!=null)o.left=+l}
   if(kid(pPr,'w:contextualSpacing'))o.contextual=onOff(pPr,'w:contextualSpacing');
+  const np=kid(pPr,'w:numPr');if(np){const id=kid(np,'w:numId')?.getAttribute('w:val');const lv=kid(np,'w:ilvl')?.getAttribute('w:val');if(id!=null)o.numId=id;if(lv!=null)o.ilvl=+lv}
   return o;
+}
+/* Listas do Word (numbering.xml): marcadores e numeração de qualquer tipo, com contadores por nível */
+let NUMB={nums:{},abs:{},counters:{}};
+const BULLET_MAP={0xB7:'•',0xA7:'▪',0xFC:'✓',0xD8:'➢',0x76:'❖',0x6E:'■',0x71:'❑',0x6C:'●',0xA8:'○',0xE0:'➢',0xF0:'➢',0x22:'∎',0x3E:'➢',0x2D:'–',0x6F:'○',0x77:'◆',0xA0:'▪',0x9F:'•',0xD7:'▪',0xFB:'✗'};
+function loadNumbering(xml){
+  NUMB={nums:{},abs:{},counters:{}};if(!xml)return;
+  const d=new DOMParser().parseFromString(xml,'application/xml');
+  for(const a of d.getElementsByTagName('w:abstractNum')){
+    const lv={};for(const l of kids(a,'w:lvl')){const il=+l.getAttribute('w:ilvl');
+      const rf=kid(kid(l,'w:rPr'),'w:rFonts');const ind=kid(kid(l,'w:pPr'),'w:ind');
+      lv[il]={fmt:kid(l,'w:numFmt')?.getAttribute('w:val')||'decimal',text:kid(l,'w:lvlText')?.getAttribute('w:val')??'%'+(il+1)+'.',
+        start:+(kid(l,'w:start')?.getAttribute('w:val')||1),font:(rf&&(rf.getAttribute('w:ascii')||rf.getAttribute('w:hAnsi')))||'',
+        left:ind?+(ind.getAttribute('w:left')||ind.getAttribute('w:start')||0):null,hang:ind?+(ind.getAttribute('w:hanging')||0):null}}
+    NUMB.abs[a.getAttribute('w:abstractNumId')]=lv}
+  for(const n of d.getElementsByTagName('w:num')){const ov={};for(const o of kids(n,'w:lvlOverride')){const so=kid(o,'w:startOverride');if(so)ov[+o.getAttribute('w:ilvl')]=+so.getAttribute('w:val')}
+    NUMB.nums[n.getAttribute('w:numId')]={abs:kid(n,'w:abstractNumId')?.getAttribute('w:val'),ov}}
+}
+function roman(n){const v=[[1000,'m'],[900,'cm'],[500,'d'],[400,'cd'],[100,'c'],[90,'xc'],[50,'l'],[40,'xl'],[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']];let r='';for(const [a,b] of v)while(n>=a){r+=b;n-=a}return r}
+function letters(n){let r='';while(n>0){n--;r=String.fromCharCode(97+n%26)+r;n=Math.floor(n/26)}return r}
+function fmtNum(n,f){switch(f){case 'lowerLetter':return letters(n);case 'upperLetter':return letters(n).toUpperCase();case 'lowerRoman':return roman(n);case 'upperRoman':return roman(n).toUpperCase();
+  case 'decimalZero':return (n<10?'0':'')+n;case 'ordinal':return n+'º';case 'none':return '';default:return String(n)}}
+function listMarker(numId,ilvl){
+  const nm=NUMB.nums[numId];if(!nm||numId==='0')return null;const lv=NUMB.abs[nm.abs];if(!lv)return null;const L=lv[ilvl]||lv[0];if(!L)return null;
+  const key=nm.abs+':'+numId;const c=NUMB.counters[key]=NUMB.counters[key]||{};
+  const startOf=i=>nm.ov[i]??(lv[i]?.start??1);
+  c[ilvl]=(c[ilvl]==null?startOf(ilvl):c[ilvl]+1);for(const k of Object.keys(c))if(+k>ilvl)delete c[k];
+  let mk;
+  if(L.fmt==='bullet'){const ch=L.text||'•';const code=ch.charCodeAt(0);const f=L.font.toLowerCase();
+    if(/symbol|wingdings/.test(f)||code>=0xF000){mk=BULLET_MAP[code>=0xF000?code-0xF000:code]||'•'}else if(ch==='o'&&/courier/.test(f))mk='○';else if(ch==='')mk='•';else mk=ch}
+  else mk=L.text.replace(/%(\d)/g,(_,d)=>{const i=+d-1;const val=c[i]??startOf(i);return fmtNum(val,(lv[i]||L).fmt)});
+  const left=L.left!=null?L.left/567:(ilvl+1)*0.63+0.64,hang=L.hang!=null?L.hang/567:0.63;
+  return {mk,left,hang,bullet:L.fmt==='bullet'};
 }
 function styleProps(id,seen=new Set()){
   const st=STY.styles[id];if(!st||seen.has(id))return {};seen.add(id);
@@ -368,8 +402,11 @@ function parsePara(p,depth){
   const lineEm=P.line==null?FONT_SINGLE:(P.lineRule==='auto'?(P.line/240)*FONT_SINGLE:Math.max(FONT_SINGLE,(P.line/20)/fpt));
   const tw2em=t=>(t||0)/20/fpt;
   const line=lineMult||lineEm/FONT_SINGLE;
-  const indentCm=P.firstLine?P.firstLine/567:(P.hanging?-P.hanging/567:0);
-  return {k:'p',t:text,html,imgs,maths,ole,bold,ital,sup,d:depth,jc,line,lineEm,beforeEm:tw2em(P.before),afterEm:tw2em(P.after),indentCm,leftCm:(P.left||0)/567,style:styleId,contextual:!!P.contextual,after:tw2em(P.after)};
+  let indentCm=P.firstLine?P.firstLine/567:(P.hanging?-P.hanging/567:0);
+  let leftCm=(P.left||0)/567,list=null;
+  if(P.numId!=null&&P.numId!=='0'&&(norm(text)||imgs.length)){const lm=listMarker(P.numId,P.ilvl||0);
+    if(lm&&lm.mk){list=lm;const ownInd=pPrProps(pPr);leftCm=ownInd.left!=null?ownInd.left/567:lm.left;const hg=ownInd.hanging!=null?ownInd.hanging/567:lm.hang;indentCm=-hg}}
+  return {k:'p',t:text,html,imgs,maths,ole,list,bold,ital,sup,d:depth,jc,line,lineEm,beforeEm:tw2em(P.before),afterEm:tw2em(P.after),indentCm,leftCm,style:styleId,contextual:!!P.contextual,after:tw2em(P.after)};
 }
 function parseTable(tbl,depth){
   const rows=[],grid=[];const open={};   // open[col] = célula que iniciou mesclagem vertical
@@ -386,7 +423,7 @@ function parseTable(tbl,depth){
       const fill=kid(tcPr,'w:shd')?.getAttribute('w:fill');
       const va=kid(tcPr,'w:vAlign')?.getAttribute('w:val');
       const cell={span,rowspan:1,al,fill:fill&&!/^(auto|FFFFFF)$/i.test(fill)?'#'+fill:null,va:va==='center'?'middle':va==='bottom'?'bottom':'top',
-        html:ps.map(p=>p.html).filter(x=>x!=='').join('<br>')};
+        html:ps.map(p=>(p.list?`<span class="marcador">${esc(p.list.mk)}</span> `:'')+p.html).filter(x=>x!=='').join('<br>')};
       if(vmv==='restart')open[col]=cell;else delete open[col];
       cells.push(cell);r.push(txt);col+=span;
     }
@@ -441,6 +478,7 @@ async function readDocx(file){
   const docXml=await zip.file('word/document.xml').async('string');
   const doc=new DOMParser().parseFromString(docXml,'application/xml');
   try{loadStyles(await zip.file('word/styles.xml')?.async('string'))}catch{loadStyles(null)}
+  try{loadNumbering(await zip.file('word/numbering.xml')?.async('string'))}catch{loadNumbering(null)}
   const relsF=zip.file('word/_rels/document.xml.rels');
   const rels={};
   if(relsF){const rd=new DOMParser().parseFromString(await relsF.async('string'),'application/xml');
@@ -699,7 +737,8 @@ async function wordToMoodle(w,mSrcs,media,opts={},qname='q'){
       const nearObj=/\[(IMG|TABELA|EQ)\]/.test(a+' '+b);
       const capPair=(/\[(IMG|TABELA)\]/.test(a)&&CAP_SRC.test(b))||(CAP_TITLE.test(a)&&/\[(IMG|TABELA)\]/.test(b));
       const isLabel=a.length<60&&!/[.;!?]$/.test(a);
-      if(opts.minGap&&!capPair&&gap<0.5&&(nearObj||!isLabel)&&!(IS_ITEM.test(a)&&IS_ITEM.test(b))&&!(looksCitation(a)&&looksCitation(b)))last.mb=Math.max(gap,opts.minGap);
+      const listNext=blk.para&&blk.para.list,listPrev=last.para&&last.para.list;
+      if(opts.minGap&&!capPair&&!listNext&&gap<0.5&&(nearObj||!isLabel)&&!(IS_ITEM.test(a)&&IS_ITEM.test(b))&&!(looksCitation(a)&&looksCitation(b)))last.mb=Math.max(gap,opts.minGap);
     }
     blk.mb=0;blocks.push(blk);pend=blk.trail||0;prevAfter=e.k==='table'?0:(e.afterEm||0);prevPara=e.k==='table'?null:e;
   }
@@ -716,8 +755,13 @@ async function wordToMoodle(w,mSrcs,media,opts={},qname='q'){
     const lh=Math.max(1,Math.min(3.5,pr.lineEm||1.725));
     const txt=b.text;
     const body=al==='justify'&&!refSet.has(pr)&&!pr.imgs.length&&!IS_ITEM.test(txt)&&!REF_HEAD.test(txt)&&!(txt.length<60&&!/[.;:!?]$/.test(txt));
-    let ind=al==='center'?0:(pr.indentCm||0);if(!ind&&opts.indent&&body)ind=1.25;
+    let ind=al==='center'?0:(pr.indentCm||0);if(!ind&&opts.indent&&body&&!pr.list)ind=1.25;
     const left=al==='center'?0:(pr.leftCm||0);
+    if(pr.list){
+      // marcador/numeração do Word com recuo deslocado (as linhas seguintes alinham com o texto)
+      const hang=Math.max(0.4,-(pr.indentCm||-0.63));
+      return `<p style="margin:0 0 ${fx(b.mb)}em;margin-left:${fx(Math.max(left,hang))}cm;text-indent:-${fx(hang)}cm;text-align:${al==='justify'?'justify':al};line-height:${fx(lh)}"><span class="marcador" style="display:inline-block;min-width:${fx(hang)}cm;text-indent:0">${esc(pr.list.mk)}&nbsp;</span>${b.html}</p>`;
+    }
     return `<p style="margin:0 0 ${fx(b.mb)}em${left>0.05?`;margin-left:${fx(left)}cm`:''};text-align:${al};line-height:${fx(lh)}${Math.abs(ind)>0.05?`;text-indent:${fx(ind)}cm`:''}">${b.html||'&nbsp;'}</p>`;
   }).join('');
   // imagens: usa os arquivos que já estão na questão; se não baterem, leva as imagens do Word
@@ -730,7 +774,7 @@ async function wordToMoodle(w,mSrcs,media,opts={},qname='q'){
     k++;return `<img src="${src}" alt=""${px?` width="${px}"`:''} class="img-fluid">`;
   });
   // texto para conferência (equação como texto) e equações como imagem
-  const checkHtml=html.replace(/<span data-math="\d+">([\s\S]*?)<\/span>/g,'$1');
+  const checkHtml=html.replace(/<span data-math="\d+">([\s\S]*?)<\/span>/g,'$1').replace(/<span class="marcador"[^>]*>[\s\S]*?<\/span>/g,'');
   const ids=[...html.matchAll(/<span data-math="(\d+)">/g)].map(x=>+x[1]);
   let eqN=0;const eqFail=[];
   if(opts.mathImg&&ids.length){
@@ -813,6 +857,8 @@ function refFlags(paras){
     inRef=false;return false});
 }
 const CITE_ITAL=/^(et\s*al\.?|in:?|apud|ibid\.?|op\.?\s*cit\.?|anais\.*|ata\.*|\(org\.?\)|\(orgs?\.?\)|\(ed\.?\)|\(eds\.?\))$/i;
+const MK_RE=/^\s*([•◦▪▫■□●○◆◇❖➢➤►▸✓✔✗\-–—*·]|\(?([0-9]{1,3}|[a-zA-Z]|[ivxlcdmIVXLCDM]{1,6})[.)º°]|\([0-9a-zA-Z]{1,4}\))\s+/;
+const stripMk=x=>x.replace(MK_RE,'');
 function bagSim(a,b){a=ns(a);b=ns(b);if(!a||!b)return 0;const c={};for(const ch of a)c[ch]=(c[ch]||0)+1;let common=0;for(const ch of b)if(c[ch]>0){c[ch]--;common++}return common/Math.max(a.length,b.length)}
 function similar(a,b){a=ns(a);b=ns(b);if(!a||!b)return 0;let p=0;while(p<a.length&&p<b.length&&a[p]===b[p])p++;let s=0;while(s<a.length-p&&s<b.length-p&&a[a.length-1-s]===b[b.length-1-s])s++;return (p+s)/Math.max(a.length,b.length)}
 function diffSnip(a,b){let p=0;while(p<a.length&&p<b.length&&a[p]===b[p])p++;let s=0;while(s<a.length-p&&s<b.length-p&&a[a.length-1-s]===b[b.length-1-s])s++;
@@ -845,7 +891,7 @@ async function analyze(word,moodle){
     mqs.forEach(m=>{if(!used.has(m))pairs.push({w:null,m})});
   }else mqs.forEach(m=>pairs.push({w:null,m}));
 
-  const flatQs=new Set(),charQs=new Set(),eqQs=new Set(),dupQs=new Set();
+  const flatQs=new Set(),charQs=new Set(),eqQs=new Set(),dupQs=new Set(),mkQs=new Set();
   let italLost=0,gluedTotal=0;const gluedQs=[],biggerQs=[],smallerQs=[];
   for(const {w,m} of pairs){
     const Q={n:w?w.n:(m.num??0),name:m?m.name:'(não encontrada no Moodle)',area:w?.area||'',tipo:w?.tipo||'',issues:[]};
@@ -859,7 +905,13 @@ async function analyze(word,moodle){
     // ----- Texto
     if(w){
       const wl=wlines(w.enun),ml=mlines(h);
-      let wt=wl.filter(Boolean),mt=ml.filter(Boolean);
+      let wt=wl.filter(Boolean).map(stripMk),mt=ml.filter(Boolean).map(stripMk);
+      // marcadores e numeração do Word: conferir se chegaram ao Moodle
+      {const items=w.enun.filter(e=>e.k==='p'&&e.list);
+       if(items.length){const raw=ml.filter(Boolean);const hasLi=/<li\b/i.test(h);
+         const miss=items.filter(e=>{const t=ns(e.t.replace(/\n/g,' '));const line=raw.find(x=>ns(stripMk(x))===t||ns(stripMk(x)).startsWith(t.slice(0,40)));
+           if(!line)return false;if(hasLi&&new RegExp('<li[^>]*>(\\s|<[^>]+>)*'+t.slice(0,12).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(h.replace(/\s+/g,'')))return false;return ns(line)===ns(stripMk(line))});
+         if(miss.length){mkQs.add(Q.name);add('atencao','Marcadores',`${miss.length} ${miss.length===1?'item de lista perdeu':'itens de lista perderam'} o marcador ou a numeração do Word`,`No Word esses parágrafos têm ${[...new Set(miss.map(e=>e.list.mk))].slice(0,4).map(x=>'“'+x+'”').join(', ')} e recuo de lista. No Moodle aparecem como texto comum. A correção automática coloca os marcadores e o recuo como no Word. Itens: `+miss.slice(0,4).map(e=>'“'+short(norm(e.t),50)+'”').join(', '))}}}
       // tabela do Word que chegou ao Moodle como texto solto: tira as células do texto e avisa em Tabelas
       const wTabs=w.enun.filter(e=>e.k==='table'),mTabN=(h.match(/<table\b/gi)||[]).length;
       if(wTabs.length>mTabN){
@@ -978,8 +1030,8 @@ async function analyze(word,moodle){
        const off=caps.filter(c=>!cen.some(x=>x.startsWith(ns(c).slice(0,25))));
        if(off.length)add('atencao','Imagens',`${off.length===1?'Legenda da imagem não está centralizada':off.length+' legendas de imagem não estão centralizadas'}`,'O título (Figura…) e a fonte (Fonte: …) devem ficar centralizados junto com a imagem: '+off.map(c=>`“${short(c,60)}”`).join(', '))}}
     // recuo da primeira linha do Word que não chegou ao Moodle
-    if(w){const wInd=w.enun.filter(e=>e.k==='p'&&Math.abs(e.indentCm||0)>0.1&&norm(e.t)).length;
-      if(wInd&&!/text-indent/i.test(h))add('atencao','Parágrafos',`Recuo de primeira linha do Word não aparece no Moodle (${wInd} parágrafo(s))`,`No Word esses parágrafos começam com recuo de ${(w.enun.find(e=>Math.abs(e.indentCm||0)>0.1).indentCm).toFixed(2).replace('.',',')} cm. No Moodle começam na margem.`)}
+    if(w){const wInd=w.enun.filter(e=>e.k==='p'&&!e.list&&Math.abs(e.indentCm||0)>0.1&&norm(e.t)).length;
+      if(wInd&&!/text-indent/i.test(h))add('atencao','Parágrafos',`Recuo de primeira linha do Word não aparece no Moodle (${wInd} parágrafo(s))`,`No Word esses parágrafos começam com recuo de ${(w.enun.find(e=>!e.list&&Math.abs(e.indentCm||0)>0.1).indentCm).toFixed(2).replace('.',',')} cm. No Moodle começam na margem.`)}
     // ----- Tabelas
     const mTables=[...h.matchAll(/<table[\s\S]*?<\/table>/gi)].map(x=>x[0]);
     const wTables=w?w.enun.filter(e=>e.k==='table'):[];
@@ -1037,6 +1089,7 @@ async function analyze(word,moodle){
   report.questions.sort((a,b)=>a.n-b.n);
   const N=report.questions.length;
   if(word){
+    if(mkQs.size)report.global.push(['atencao',`Marcadores ou numeração de lista do Word que não chegaram ao Moodle em ${mkQs.size} questão(ões): ${[...mkQs].join(', ')}. A correção automática coloca os marcadores e o recuo como no Word.`]);
     if(eqQs.size)report.global.push(['atencao',`Equações do Word que chegaram como texto digitado em ${eqQs.size} questão(ões): ${[...eqQs].join(', ')}. A correção automática insere as equações como imagem, iguais às do Word.`]);
     if(flatQs.size)report.global.push(['erro',`Tabela que virou texto solto em ${flatQs.size} questão(ões): ${[...flatQs].join(', ')}. O conversor colocou cada célula numa linha. A correção automática monta as tabelas a partir do Word.`]);
     if(charQs.size)report.global.push(['erro',`Caracteres diferentes do Word em ${charQs.size} questão(ões): ${[...charQs].join(', ')}. Símbolos, letras gregas, sobrescritos ou fórmulas não chegaram iguais. A correção automática usa o texto do Word.`]);
@@ -1079,7 +1132,7 @@ function dupCheck(texts,where){
   return out;
 }
 function wordHtml(w,media){
-  let h=w.enun.map(e=>e.k==='table'?e.html:`<p style="text-align:${{both:'justify',center:'center',right:'right'}[e.jc]||'left'};line-height:${(e.lineEm||1.15).toFixed(3)};margin:${(e.beforeEm||0).toFixed(2)}em 0 ${(e.afterEm||0).toFixed(2)}em ${(e.leftCm||0).toFixed(2)}cm;text-indent:${(e.indentCm||0).toFixed(2)}cm">${e.html||'&nbsp;'}</p>`).join('');
+  let h=w.enun.map(e=>e.k==='table'?e.html:e.list?`<p style="margin:0 0 0 ${Math.max(e.leftCm||0,0.63).toFixed(2)}cm;text-indent:${(e.indentCm||-0.63).toFixed(2)}cm;line-height:${(e.lineEm||1.15).toFixed(3)};text-align:${{both:'justify',center:'center',right:'right'}[e.jc]||'left'}"><span style="display:inline-block;min-width:${(-(e.indentCm||-0.63)).toFixed(2)}cm;text-indent:0">${esc(e.list.mk)}&nbsp;</span>${e.html}</p>`:`<p style="text-align:${{both:'justify',center:'center',right:'right'}[e.jc]||'left'};line-height:${(e.lineEm||1.15).toFixed(3)};margin:${(e.beforeEm||0).toFixed(2)}em 0 ${(e.afterEm||0).toFixed(2)}em ${(e.leftCm||0).toFixed(2)}cm;text-indent:${(e.indentCm||0).toFixed(2)}cm">${e.html||'&nbsp;'}</p>`).join('');
   h=h.replace(/data-rid="([^"]+)"/g,(_,rid)=>media[rid]?`src="data:${media[rid].mime};base64,${media[rid].b64}"`:'');
   return h;
 }
