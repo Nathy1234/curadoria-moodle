@@ -247,7 +247,8 @@ function loadNumbering(xml){
       lv[il]={fmt:kid(l,'w:numFmt')?.getAttribute('w:val')||'decimal',text:kid(l,'w:lvlText')?.getAttribute('w:val')??'%'+(il+1)+'.',
         start:+(kid(l,'w:start')?.getAttribute('w:val')||1),font:(rf&&(rf.getAttribute('w:ascii')||rf.getAttribute('w:hAnsi')))||'',
         left:ind?+(ind.getAttribute('w:left')||ind.getAttribute('w:start')||0):null,hang:ind?+(ind.getAttribute('w:hanging')||0):null}}
-    NUMB.abs[a.getAttribute('w:abstractNumId')]=lv}
+    NUMB.abs[a.getAttribute('w:abstractNumId')]=lv;
+    const link=kid(a,'w:numStyleLink')?.getAttribute('w:val');if(link)(NUMB.links=NUMB.links||{})[a.getAttribute('w:abstractNumId')]=link}
   for(const n of d.getElementsByTagName('w:num')){const ov={};for(const o of kids(n,'w:lvlOverride')){const so=kid(o,'w:startOverride');if(so)ov[+o.getAttribute('w:ilvl')]=+so.getAttribute('w:val')}
     NUMB.nums[n.getAttribute('w:numId')]={abs:kid(n,'w:abstractNumId')?.getAttribute('w:val'),ov}}
 }
@@ -256,7 +257,10 @@ function letters(n){let r='';while(n>0){n--;r=String.fromCharCode(97+n%26)+r;n=M
 function fmtNum(n,f){switch(f){case 'lowerLetter':return letters(n);case 'upperLetter':return letters(n).toUpperCase();case 'lowerRoman':return roman(n);case 'upperRoman':return roman(n).toUpperCase();
   case 'decimalZero':return (n<10?'0':'')+n;case 'ordinal':return n+'º';case 'none':return '';default:return String(n)}}
 function listMarker(numId,ilvl){
-  const nm=NUMB.nums[numId];if(!nm||numId==='0')return null;const lv=NUMB.abs[nm.abs];if(!lv)return null;const L=lv[ilvl]||lv[0];if(!L)return null;
+  const nm=NUMB.nums[numId];if(!nm||numId==='0')return null;let lv=NUMB.abs[nm.abs];
+  // lista definida por "estilo de lista": segue o vínculo até a definição real
+  if((!lv||!Object.keys(lv).length)&&NUMB.links&&NUMB.links[nm.abs]){const st=styleProps(NUMB.links[nm.abs]);const nm2=st.numId&&NUMB.nums[st.numId];if(nm2)lv=NUMB.abs[nm2.abs]}
+  if(!lv||!Object.keys(lv).length)return null;const L=lv[ilvl]||lv[0];if(!L)return null;
   const key=nm.abs+':'+numId;const c=NUMB.counters[key]=NUMB.counters[key]||{};
   const startOf=i=>nm.ov[i]??(lv[i]?.start??1);
   c[ilvl]=(c[ilvl]==null?startOf(ilvl):c[ilvl]+1);for(const k of Object.keys(c))if(+k>ilvl)delete c[k];
@@ -277,10 +281,10 @@ function loadStyles(xml){
   const dd=d.getElementsByTagName('w:pPrDefault')[0];if(dd)STY.defaults=pPrProps(kid(dd,'w:pPr'));
   const rd=d.getElementsByTagName('w:rPrDefault')[0];const sz=rd&&rd.getElementsByTagName('w:sz')[0];if(sz)STY.fontPt=+sz.getAttribute('w:val')/2;
   for(const st of d.getElementsByTagName('w:style')){
-    if(st.getAttribute('w:type')!=='paragraph')continue;const id=st.getAttribute('w:styleId');
+    const ty=st.getAttribute('w:type');if(ty!=='paragraph'&&ty!=='numbering')continue;const id=st.getAttribute('w:styleId');
     STY.styles[id]={basedOn:kid(st,'w:basedOn')?.getAttribute('w:val'),props:pPrProps(kid(st,'w:pPr'))};
     const ssz=kid(kid(st,'w:rPr'),'w:sz');if(ssz)STY.styles[id].fontPt=+ssz.getAttribute('w:val')/2;
-    if(st.getAttribute('w:default')==='1')STY.defaultId=id;
+    if(ty==='paragraph'&&st.getAttribute('w:default')==='1')STY.defaultId=id;
   }
 }
 const FONT_SINGLE=1.15;   // espaçamento "simples" do Word para Arial/Calibri ≈ 1,15 × tamanho da fonte
@@ -293,7 +297,7 @@ function symChar(c){
   let code=parseInt(c.getAttribute('w:char')||'0',16);const font=(c.getAttribute('w:font')||'').toLowerCase();
   if(code>=0xF000)code-=0xF000;
   if(font.includes('symbol'))return SYMBOL_MAP[code]||String.fromCharCode(code);
-  if(font.includes('wingdings'))return '';
+  if(/wingdings|webdings/.test(font))return BULLET_MAP[code]||'•';
   return code?String.fromCharCode(code):'';
 }
 /* Equações do Word (OMML) -> HTML simples com sobrescrito/subscrito */
@@ -789,6 +793,28 @@ async function wordToMoodle(w,mSrcs,media,opts={},qname='q'){
   }else html=checkHtml;
   return {html,checkHtml,newFiles,eqN,eqFail};
 }
+/* coloca marcadores do Word nos parágrafos/linhas do Moodle que têm o mesmo texto do item de lista */
+function applyMarkersByText(html,w){
+  const items=w.enun.filter(e=>e.k==='p'&&e.list&&norm(e.t));if(!items.length)return {html,n:0};
+  const map=new Map();items.forEach(e=>{const k=ns(e.t.replace(/\n/g,' '));if(k&&!map.has(k))map.set(k,e)});
+  const key=x=>ns(stripMk(decode(x.replace(/<[^>]+>/g,' ')).replace(/\u00a0/g,' ')));
+  const fx=n=>String(Math.round(n*100)/100);let n=0;
+  const span=e=>`<span class="marcador" style="display:inline-block;min-width:${fx(Math.max(0.4,-(e.indentCm||-0.63)))}cm;text-indent:0">${esc(e.list.mk)}&nbsp;</span>`;
+  // parágrafo inteiro = item
+  html=html.replace(/<p\b([^>]*)>([\s\S]*?)<\/p>/gi,(all,attrs,inner)=>{
+    if(/class="marcador"/.test(inner))return all;
+    const e=map.get(key(inner));
+    if(e){n++;const hang=Math.max(0.4,-(e.indentCm||-0.63)),left=Math.max(e.leftCm||0,hang);
+      const st=(attrs.match(/style="([^"]*)"/i)||[])[1]||'';const keep=st.replace(/(margin-left|text-indent)\s*:[^;]*;?/gi,'');
+      return `<p style="${keep}${keep&&!/;\s*$/.test(keep)?';':''}margin-left:${fx(left)}cm;text-indent:-${fx(hang)}cm">${span(e)}${inner.replace(/^\s*(?:<span>)?\s*[•◦▪■●○➢➤✓–\-*·]\s*/,'')}</p>`}
+    // várias linhas no mesmo parágrafo (separadas por <br>)
+    if(/<br/i.test(inner)){let ch=false;const parts=inner.split(/(<br\s*\/?>)/i).map(seg=>{if(/^<br/i.test(seg))return seg;const e2=map.get(key(seg));if(e2&&!/class="marcador"/.test(seg)){ch=true;n++;return span(e2)+seg.replace(/^\s*/,'')}return seg});
+      if(ch)return `<p${attrs}>${parts.join('')}</p>`}
+    return all});
+  // HTML sem parágrafos (linhas separadas só por <br>)
+  if(!n&&!/<p\b/i.test(html)){html=html.split(/(<br\s*\/?>)/i).map(seg=>{if(/^<br/i.test(seg))return seg;const e2=map.get(key(seg));if(e2&&!/class="marcador"/.test(seg)){n++;return seg.replace(/^(\s*(?:<span[^>]*>)?\s*)/,'$1'+span(e2))}return seg}).join('')}
+  return {html,n};
+}
 const textOnly=h=>ns(h.replace(/<img[^>]*>/gi,'').replace(/<[^>]+>/g,''));
 function cleanAnswerHtml(h){return h.replace(/(\s|&nbsp;)*<br\s*\/?>(\s|&nbsp;)*<\/p>/gi,'</p>').replace(/(\s|&nbsp;)+<\/p>/gi,'</p>')}
 function sameContent(a,b){
@@ -798,7 +824,7 @@ function sameContent(a,b){
 }
 async function buildFixedXml(xmlText,moodle,word,newCat,opts={}){
   const doc=new DOMParser().parseFromString(xmlText,'application/xml');
-  const log={changed:0,kept:[],total:0,restored:[],tables:[],eqs:[],eqFail:[],dupKept:[]};
+  const log={changed:0,kept:[],total:0,restored:[],tables:[],eqs:[],eqFail:[],dupKept:[],notRebuilt:[],mkByText:[]};
   const byNum=new Map();if(word)word.qs.forEach(w=>byNum.set(w.n,w));
   let k=0;
   for(const q of doc.getElementsByTagName('question')){
@@ -808,21 +834,27 @@ async function buildFixedXml(xmlText,moodle,word,newCat,opts={}){
     const m=moodle[k++];log.total++;
     const w=word?(m.num!=null&&byNum.get(m.num))||word.qs[k-1]:null;
     const tEl=kid(kid(q,'questiontext'),'text');if(!tEl)continue;
-    const orig=tEl.textContent;let fixed=null,newFiles=[];
+    const orig=tEl.textContent;let fixed=null,newFiles=[],rebuildWhy='';
     const setText=(el,v)=>{while(el.firstChild)el.removeChild(el.firstChild);el.appendChild(doc.createCDATASection(v))};
     // 1º: refaz a partir do Word (recupera tabelas e caracteres); confere que o texto bate com o Word
     if(w&&w.enun.some(e=>e.k==='table'||norm(e.t)||e.imgs?.length)){
       try{const mSrcs=[...orig.matchAll(/<img\b[^>]*src="([^"]+)"/gi)].map(x=>x[1]);
         const r=await wordToMoodle(w,mSrcs,word.media,opts,m.name);
         const wt=ns(wlines(w.enun).filter(Boolean).join('')),ft=ns(mlines(r.checkHtml).filter(Boolean).join(''));
+        if(wt!==ft){const a=wlines(w.enun).filter(Boolean).map(norm),b=mlines(r.checkHtml).filter(Boolean).map(norm);const i=a.findIndex((x,j)=>ns(x)!==ns(b[j]||''));rebuildWhy=i>=0?`trecho do Word que não pôde ser reproduzido: “${short(a[i],80)}”`:'texto gerado diferente do Word'}
         if(wt===ft){fixed=r.html;newFiles=r.newFiles;if(r.eqN)log.eqs.push(m.name);if(r.eqFail.length)log.eqFail.push(m.name);
           if(textOnly(orig)!==textOnly(fixed))log.restored.push(m.name);
           if((orig.match(/<table\b/gi)||[]).length<(fixed.match(/<table\b/gi)||[]).length)log.tables.push(m.name)}
-      }catch(e){console.error(e)}
+      }catch(e){console.error(e);rebuildWhy='erro ao montar a questão a partir do Word ('+(e.message||e)+')'}
     }
     // 2º: sem Word (ou se algo não bateu), só arruma o HTML que já está no Moodle
-    if(fixed==null){try{fixed=fixQuestionHtml(orig,w,word&&word.media,opts)}catch(e){fixed=null}
-      if(!fixed||!sameContent(orig,fixed)){log.kept.push(m.name);fixed=orig}}
+    if(fixed==null){
+      if(w&&rebuildWhy)log.notRebuilt.push({q:m.name,why:rebuildWhy});
+      try{fixed=fixQuestionHtml(orig,w,word&&word.media,opts)}catch(e){fixed=null}
+      if(!fixed||!sameContent(orig,fixed)){log.kept.push(m.name);fixed=orig}
+      // mesmo sem refazer pelo Word, coloca os marcadores de lista pelo texto do item
+      if(w){const r2=applyMarkersByText(fixed,w);if(r2.n){fixed=r2.html;log.mkByText.push(m.name)}}
+    }
     if(fixed!==orig)log.changed++;
     setText(tEl,fixed);
     const qtEl=kid(q,'questiontext');
@@ -857,8 +889,8 @@ function refFlags(paras){
     inRef=false;return false});
 }
 const CITE_ITAL=/^(et\s*al\.?|in:?|apud|ibid\.?|op\.?\s*cit\.?|anais\.*|ata\.*|\(org\.?\)|\(orgs?\.?\)|\(ed\.?\)|\(eds\.?\))$/i;
-const MK_RE=/^\s*([•◦▪▫■□●○◆◇❖➢➤►▸✓✔✗\-–—*·]|\(?([0-9]{1,3}|[a-zA-Z]|[ivxlcdmIVXLCDM]{1,6})[.)º°]|\([0-9a-zA-Z]{1,4}\))\s+/;
-const stripMk=x=>x.replace(MK_RE,'');
+const MK_RE=/^[\s\u00a0]*([•◦▪▫■□●○◆◇❖➢➤►▸✓✔✗\-–—*·]|\(?([0-9]{1,3}|[a-zA-Z]|[ivxlcdmIVXLCDM]{1,6})[.)º°]|\([0-9a-zA-Z]{1,4}\))\s+/;
+const stripMk=x=>x.replace(/^[\s\u00a0]+/,'').replace(MK_RE,'');
 function bagSim(a,b){a=ns(a);b=ns(b);if(!a||!b)return 0;const c={};for(const ch of a)c[ch]=(c[ch]||0)+1;let common=0;for(const ch of b)if(c[ch]>0){c[ch]--;common++}return common/Math.max(a.length,b.length)}
 function similar(a,b){a=ns(a);b=ns(b);if(!a||!b)return 0;let p=0;while(p<a.length&&p<b.length&&a[p]===b[p])p++;let s=0;while(s<a.length-p&&s<b.length-p&&a[a.length-1-s]===b[b.length-1-s])s++;return (p+s)/Math.max(a.length,b.length)}
 function diffSnip(a,b){let p=0;while(p<a.length&&p<b.length&&a[p]===b[p])p++;let s=0;while(s<a.length-p&&s<b.length-p&&a[a.length-1-s]===b[b.length-1-s])s++;
@@ -1264,7 +1296,7 @@ $('#fixBtn').addEventListener('click',async()=>{
     const rep=await analyze(LAST.word,moodle2);
     rep.source={docx:files.docx?.name||null,xml:'XML corrigido'};REPORT=rep;window.__report2=rep;catFilter=null;
     const b=$('#banner');b.hidden=false;
-    b.innerHTML=`<b>Correção aplicada em ${log.changed} de ${log.total} questões.</b> ${log.tables.length?`Tabelas montadas a partir do Word: ${esc(log.tables.join(', '))}. `:''}${log.eqs.length?`Equações inseridas como imagem: ${esc(log.eqs.join(', '))}. `:''}${log.eqFail.length?`Equações que não puderam ser desenhadas (ficaram como texto formatado): ${esc(log.eqFail.join(', '))}. `:''}${log.restored.length?`Texto ou caracteres recuperados do Word: ${esc(log.restored.join(', '))}. `:''}${log.kept.length?`Mantidas sem alteração por segurança: ${esc(log.kept.join(', '))}. `:''}${log.dupKept.length?`<br><b style="color:var(--err)">Alternativas não alteradas por duplicidade: ${esc(log.dupKept.join(', '))}.</b> Elas continuam como estavam e precisam ser corrigidas pela equipe responsável. `:''}O relatório abaixo já é do XML corrigido.`;
+    b.innerHTML=`<b>Correção aplicada em ${log.changed} de ${log.total} questões.</b> ${log.tables.length?`Tabelas montadas a partir do Word: ${esc(log.tables.join(', '))}. `:''}${log.eqs.length?`Equações inseridas como imagem: ${esc(log.eqs.join(', '))}. `:''}${log.eqFail.length?`Equações que não puderam ser desenhadas (ficaram como texto formatado): ${esc(log.eqFail.join(', '))}. `:''}${log.restored.length?`Texto ou caracteres recuperados do Word: ${esc(log.restored.join(', '))}. `:''}${log.kept.length?`Mantidas sem alteração por segurança: ${esc(log.kept.join(', '))}. `:''}${log.notRebuilt.length?`<br><b style="color:var(--warn)">Questões que não puderam ser refeitas a partir do Word (${log.notRebuilt.length}):</b> nelas foi ajustado só o espaçamento${log.mkByText.length?' e foram colocados os marcadores de lista':''}; confira no Moodle. ${esc(log.notRebuilt.slice(0,8).map(x=>x.q+' — '+x.why).join(' · '))}${log.notRebuilt.length>8?' …':''}<br>`:''}${log.dupKept.length?`<br><b style="color:var(--err)">Alternativas não alteradas por duplicidade: ${esc(log.dupKept.join(', '))}.</b> Elas continuam como estavam e precisam ser corrigidas pela equipe responsável. `:''}O relatório abaixo já é do XML corrigido.`;
     render();
     const base=(LAST.name||'questoes.xml').replace(/\.xml$/i,'');
     const zip=new JSZip();zip.file(base+' - corrigido.xml',xml);
