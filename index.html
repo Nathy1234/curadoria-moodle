@@ -151,7 +151,7 @@ button{font:inherit;cursor:pointer}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 09/10 11h00</span></div>
+    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 09/10 11h30</span></div>
     <h1>Curadoria Word × Moodle</h1>
     <p class="lede">Compare o Word original com o XML exportado do Moodle depois da importação. A ferramenta confere texto, espaçamento, imagens, tabelas, alternativas, gabarito e formatação, questão por questão. Feedback e dificuldade ficam de fora, porque não são importados para o Moodle. Os arquivos são lidos só no seu navegador e não são enviados para nenhum servidor.</p>
   </header>
@@ -196,21 +196,6 @@ button{font:inherit;cursor:pointer}
   </section>
   <section id="dupAlert" class="dupalert" hidden role="alert"></section>
   <section id="topicAlert" class="dupalert topic" hidden role="alert"></section>
-  <section id="aiTopic" class="aitopic" hidden>
-    <div class="aitext">
-      <h2>Tema da disciplina</h2>
-      <p>A ferramenta lê cada questão e identifica a área do conhecimento do assunto cobrado, comparando com a área da disciplina. Aponta, por exemplo, uma disciplina de Administração com questões que só tratam de Inteligência Artificial. Tudo é feito aqui, sem enviar nada para fora. Nada é alterado no XML. Confira o nome sugerido da disciplina e clique em <b>Conferir tema</b> se mudar algo.</p>
-      <label for="discName">Disciplina</label>
-      <input id="discName" type="text" placeholder="Ex.: Gestão de Pessoas">
-      <label for="discEmenta">Ementa ou principais assuntos (opcional, melhora a conferência)</label>
-      <textarea id="discEmenta" rows="3" placeholder="Cole aqui a ementa ou os assuntos da disciplina"></textarea>
-    </div>
-    <div class="aiactions">
-      <button class="btn" id="aiRun">Conferir tema</button>
-      <button class="ghost" id="aiStop" hidden>Parar</button>
-      <div class="aistatus" id="aiStatus" role="status"></div>
-    </div>
-  </section>
 
   <section id="summary" class="summary" hidden></section>
   <section id="results" hidden>
@@ -1349,7 +1334,7 @@ $('#run').addEventListener('click',async()=>{
     rep.source={docx:files.docx?.name||null,xml:files.xml.name};
     window.__report=rep;REPORT=rep;catFilter=null;$('#banner').hidden=true;
     LAST={word:word&&word.qs.length?word:null,xmlText,moodle,name:files.xml.name};$('#fixbox').hidden=false;
-    $('#discName').value=guessDiscipline(xmlText,files.xml.name);render();setupAiTopic();
+    render();setupAiTopic(guessDiscipline(xmlText,files.xml.name));
     status(`Pronto: ${rep.questions.length} questões conferidas.`);
   }catch(e){console.error(e);status(e.message||'Não foi possível ler os arquivos.',true)}
   $('#run').disabled=!files.xml;
@@ -1377,7 +1362,7 @@ const AREAS={
    k:'artificial algoritm software hardware programac programador codigo python java javascript sql neural chatbot llm gpt computac computador ciberseg criptograf servidor internet aplicativo automac robo robotic deep learning machine dataset analytics blockchain nuvem cloud digital tecnologic plataforma online virtual api frontend backend dados big rede redes'},
  'Direito':{nome:/direito|jur[ií]dic|legisla|criminal|penal|constitucional/i,
    k:'direito legisl juridic constituc civil penal crime criminal tribunal juiz processual jurisprud advog sentenc stf stj ilicit reu autor acao recurso codigo artigo inciso decreto norma normativ contrato contratual indeniz responsabilidade'},
- 'Saúde':{nome:/sa[uú]de|medicina|enfermagem|farm[aá]cia|biomedicina|fisioterapia|odontologia|nutri[cç][aã]o|psicologia hospitalar|cl[ií]nic|patolog|anatomia|fisiologia/i,
+ 'Saúde':{nome:/sa[uú]de|medicina|enfermagem|farm[aá]cia|biomedicina|fisioterapia|odontologia|psicologia hospitalar|cl[ií]nic|patolog|anatomia|fisiologia/i,
    k:'paciente clinic doenc diagnost tratament medicament farmac farmaceut hospital enferm sintoma terapia terapeut saude cirurg infecc vacina exame laborator sangue celula patolog fisiolog anatom dose posolog prescric epidemiol renal cardiac glicem insulin hipertens diabet antibiot plasma soro hemoli bioquim analit'},
  'Agronomia e Ciências Agrárias':{nome:/agro|agr[ií]col|agr[aá]ri|zootecnia|veterin[aá]ria|florestal|agronegócio/i,
    k:'lavoura plantio safra adubac fertiliz irrigac pastagem pastejo forrag semente colheita agricol agronom praga herbicid fitossan rebanho bovino milho soja trigo cultivo cultivar agropecu fazenda rural calag gessag erosao terrac talhao produtividade solo plantas folha raiz germinac colhedora trator'},
@@ -1393,6 +1378,16 @@ const AREAS={
    k:'seguranca vigilan vigilante policia porte arma patrulh ronda monitorament cftv acesso flagrante'},
  'Meio Ambiente':{nome:/ambient|ecolog|sustentab|gest[aã]o ambiental/i,
    k:'ambient sustentab ecolog poluic residuo reciclag biodivers desmatament emissao carbono climat'},
+ 'Nutrição':{nome:/nutri[cç]/i,
+   k:'nutri nutricion aliment dieta dietetic dietoterap caloria calori energetic proteina proteic carboidrat lipid gordura vitamina mineral micronutri macronutri fibra obesidade sobrepeso desnutric antropometr imc refeic cardapio manipulac enteral parenteral aleitament lactente gestante consumo alimentar segurança sodio acucar glicid'},
+ 'Educação Física e Esporte':{nome:/educa[cç][aã]o f[ií]sica|esporte|treinamento desportivo/i,
+   k:'esporte esportiv atleta treino treinament exercicio aerobi anaerobi musculac aptidao condicionament modalidade desportiv motora motor flexibilidade hipertrofia'},
+ 'Ciências Biológicas e Química':{nome:/biologia|ci[eê]ncias biol[oó]gicas|qu[ií]mica|bioqu[ií]mica|gen[eé]tica|microbiologia|bot[aâ]nica|zoologia/i,
+   k:'celula celular genetic gene dna rna proteina enzima metabol molecul especie evoluc organism bacteria virus fungo ecossistema reacao quimic atomo ligacao solucao acido base ph oxidac reagente'},
+ 'Serviço Social':{nome:/servi[cç]o social/i,
+   k:'assistente social vulnerabil politica publica assistencial cras creas beneficio cidadania familia comunidade direitos sociais desigualdade'},
+ 'Arquitetura e Urbanismo':{nome:/arquitetura|urbanismo/i,
+   k:'arquitet urban projeto arquitetonico edificac planta fachada paisag cidade espaco urbano zoneament ergonom conforto iluminac ventilac'},
  'Letras e Comunicação':{nome:/letras|l[ií]ngua|comunica[cç][aã]o|jornalismo|publicidade|portugu[eê]s/i,
    k:'lingu gramatic literatur poema sintax semant morfolog oracao verbo substantiv jornal publicidade midia narrativa'}
 };
@@ -1409,8 +1404,14 @@ const RELATED={
  'Psicologia':['Saúde','Educação','Administração e Gestão'],
  'Segurança':['Direito','Administração e Gestão','Tecnologia e Inteligência Artificial'],
  'Meio Ambiente':['Agronomia e Ciências Agrárias','Engenharia e Exatas','Direito'],
- 'Letras e Comunicação':['Educação','Administração e Gestão']
+ 'Letras e Comunicação':['Educação','Administração e Gestão'],
+ 'Nutrição':['Saúde','Ciências Biológicas e Química','Educação Física e Esporte','Administração e Gestão','Agronomia e Ciências Agrárias'],
+ 'Educação Física e Esporte':['Saúde','Educação','Nutrição','Psicologia'],
+ 'Ciências Biológicas e Química':['Saúde','Nutrição','Agronomia e Ciências Agrárias','Meio Ambiente','Engenharia e Exatas'],
+ 'Serviço Social':['Direito','Psicologia','Educação','Saúde','Administração e Gestão'],
+ 'Arquitetura e Urbanismo':['Engenharia e Exatas','Meio Ambiente','Tecnologia e Inteligência Artificial']
 };
+RELATED['Saúde'].push('Nutrição','Ciências Biológicas e Química','Educação Física e Esporte');RELATED['Agronomia e Ciências Agrárias'].push('Ciências Biológicas e Química','Nutrição');RELATED['Meio Ambiente'].push('Ciências Biológicas e Química');RELATED['Educação'].push('Educação Física e Esporte');RELATED['Psicologia'].push('Serviço Social');
 const AREA_KEYS=Object.fromEntries(Object.entries(AREAS).map(([a,v])=>[a,v.k.split(' ')]));
 const fold=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 function areaScores(text){
@@ -1432,12 +1433,12 @@ function disciplineAreas(name,ementa,qs){
   const own=[...new Set((fold(name+' '+(ementa||'')).match(/[a-z]{5,}/g)||[]).filter(w=>!STOP.has(w)).map(w=>w.slice(0,6)))];
   return {areas,how,own};
 }
-function runLocalTopic(){
-  const R=REPORT;if(!R)return;const name=$('#discName').value.trim(),ementa=$('#discEmenta').value.trim();
+function runLocalTopic(name){
+  const R=REPORT;if(!R)return;const ementa='';name=(name||'').trim();
   const qs=R.questions.filter(q=>q.topicText);
   qs.forEach(q=>{delete q.aiTopic;q.issues=q.issues.filter(x=>!(x.cat==='Tema'&&x.ai))});
   const D=disciplineAreas(name,ementa,qs);R.aiDisc=name;R.aiAreas=D;
-  if(!D.areas.length){$('#aiStatus').textContent='Não foi possível reconhecer a área da disciplina. Escreva um nome mais completo (ex.: “Gestão de Pessoas”) ou cole a ementa.';render();return}
+  if(!D.areas.length){R.aiStatus='';render();return}
   let fora=0,parc=0;
   for(const q of qs){
     const {sc,hits}=areaScores(q.topicText);const f=fold(q.topicText);
@@ -1457,14 +1458,10 @@ function runLocalTopic(){
     if(sit==='fora')fora++;else parc++;
     q.issues.unshift({sev:sit==='fora'?'erro':'atencao',cat:'Tema',ai:true,title:sit==='fora'?`Assunto de outra área: ${other[0]}`:`Só em parte ligada à disciplina (assunto principal: ${other[0]})`,detail:`Disciplina: “${name}” (área ${D.areas.join(' / ')}, identificada ${D.how}). ${q.aiTopic.motivo} Confira se a questão pertence a esta disciplina. Nada foi alterado.`});
   }
-  $('#aiStatus').textContent=`Área da disciplina: ${D.areas.join(' / ')} (${D.how}). ${fora} questão(ões) de outra área, ${parc} só em parte ligada(s).`;
+  R.aiStatus=`Área identificada: ${D.areas.join(' / ')} (${D.how}).`;
   render();
 }
-function setupAiTopic(){
-  $('#aiTopic').hidden=false;
-  if(!setupAiTopic.done){setupAiTopic.done=true;$('#aiRun').addEventListener('click',runLocalTopic);$('#aiStop').remove()}
-  runLocalTopic();
-}
+function setupAiTopic(name){runLocalTopic(name)}
 function topicRequestText(R){
   const rows=R.questions.filter(q=>q.offTopic||(q.aiTopic&&q.aiTopic.sit!=='relacionada'));
   const L=['Conferência de tema: questões possivelmente fora da disciplina','',`Disciplina/arquivo: ${R.source?.xml||''}`,'',
@@ -1481,8 +1478,8 @@ function renderTopicAlert(R){
   const cell=q=>q.aiTopic&&q.aiTopic.sit!=='relacionada'
     ?`<td><span class="sit ${q.aiTopic.sit}">${q.aiTopic.sit==='fora'?'Fora do tema':'Em parte'}</span></td><td>${esc(q.aiTopic.assunto)}</td><td>${esc(q.aiTopic.motivo)}</td>`
     :`<td><span class="sit estat">Vocabulário diferente</span></td><td>${esc(q.offTopic.own.join(', '))}</td><td>Termos mais comuns na disciplina: ${esc(q.offTopic.disc.join(', '))}</td>`;
-  box.innerHTML=`<h2><span class="ico" aria-hidden="true">?</span>${rows.length===1?'1 questão possivelmente fora do tema':rows.length+' questões possivelmente fora do tema'} da disciplina${R.aiDisc?` “${esc(R.aiDisc)}”`:''}</h2>
-    <p>${R.aiAreas&&R.aiAreas.areas.length?`A ferramenta leu as questões e apontou as que tratam de assunto de outra área (área da disciplina: ${esc(R.aiAreas.areas.join(' / '))}). `:''}Questões com vocabulário muito diferente das demais também aparecem aqui. <b>Nada foi alterado.</b> A pessoa responsável pela disciplina deve conferir e, se for o caso, pedir a troca da questão.</p>
+  box.innerHTML=`<h2><span class="ico" aria-hidden="true">?</span>Sugestão: ${rows.length===1?'1 questão pode estar fora do tema':rows.length+' questões podem estar fora do tema'} da disciplina</h2>
+    <p>A ferramenta leu as questões e sugere as que tratam de assunto de outra área ou destoam das demais.${R.aiStatus?' '+esc(R.aiStatus):''} <b>Nada foi alterado.</b> É uma sugestão: a pessoa responsável pela disciplina deve conferir e, se for o caso, pedir a troca da questão.</p>
     <div class="duptable"><table><thead><tr><th>Questão</th><th>Situação</th><th>Assunto / termos</th><th>Motivo</th></tr></thead><tbody>
     ${rows.map(q=>`<tr><td class="q">${esc(q.name)}</td>${cell(q)}</tr>`).join('')}
     </tbody></table></div>
