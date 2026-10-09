@@ -139,7 +139,7 @@ button{font:inherit;cursor:pointer}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 08/10 17h40</span></div>
+    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 09/10 09h30</span></div>
     <h1>Curadoria Word × Moodle</h1>
     <p class="lede">Compare o Word original com o XML exportado do Moodle depois da importação. A ferramenta confere texto, espaçamento, imagens, tabelas, alternativas, gabarito e formatação, questão por questão. Feedback e dificuldade ficam de fora, porque não são importados para o Moodle. Os arquivos são lidos só no seu navegador e não são enviados para nenhum servidor.</p>
   </header>
@@ -164,7 +164,7 @@ button{font:inherit;cursor:pointer}
       <li><b>Imagens:</b> quantidade, imagem faltando ou quebrada, imagem diferente da do Word, tamanho maior que no Word, imagem fora do centro e título (Figura…) e fonte (Fonte: …) da imagem fora do centro.</li>
       <li><b>Tabelas:</b> tabela do Word que virou texto solto no Moodle, quantidade, conteúdo das células e largura fixa que corta a tabela no celular.</li>
       <li><b>Fórmulas:</b> equações do Word que chegaram ao Moodle como texto digitado (sem frações, somatórios, raízes e expoentes montados) e objetos antigos do Word, como equações do Equation 3.0, que precisam ser conferidos.</li>
-      <li><b>Marcadores:</b> marcadores e numeração de listas do Word (•, ◦, ▪, ➢, ✓, 1., a), i., I. e outros, em qualquer nível) que não chegaram ao Moodle; a correção coloca o marcador, a numeração em sequência e o recuo da lista como no Word.</li>
+      <li><b>Marcadores:</b> listas que já vêm no formato do Moodle (numeração romana I, II, III…, letras, números e marcadores •), numeração repetida dentro do item, lista colocada dentro de parágrafo, e marcadores e numeração de listas do Word (•, ◦, ▪, ➢, ✓, 1., a), i., I. e outros, em qualquer nível) que não chegaram ao Moodle; a correção coloca o marcador, a numeração em sequência e o recuo da lista como no Word.</li>
       <li><b>Alternativas:</b> quantidade, texto e gabarito iguais ao Word, mais de uma correta, alternativa vazia, alternativas duplicadas, triplicadas ou quase iguais (no Moodle e no próprio Word), que aparecem num alerta em destaque no topo e nunca são alteradas automaticamente, e letra digitada no texto.</li>
       <li><b>Formatação:</b> negrito, itálico (fora das referências), sobrescrito e subscrito, alinhamento (justificado) e entrelinha em relação ao Word.</li>
     </ul>
@@ -269,7 +269,11 @@ function listMarker(numId,ilvl){
     if(/symbol|wingdings/.test(f)||code>=0xF000){mk=BULLET_MAP[code>=0xF000?code-0xF000:code]||'•'}else if(ch==='o'&&/courier/.test(f))mk='○';else if(ch==='')mk='•';else mk=ch}
   else mk=L.text.replace(/%(\d)/g,(_,d)=>{const i=+d-1;const val=c[i]??startOf(i);return fmtNum(val,(lv[i]||L).fmt)});
   const left=L.left!=null?L.left/567:(ilvl+1)*0.63+0.64,hang=L.hang!=null?L.hang/567:0.63;
-  return {mk,left,hang,bullet:L.fmt==='bullet'};
+  const OLT={decimal:'1',lowerLetter:'a',upperLetter:'A',lowerRoman:'i',upperRoman:'I'};
+  let native=null;
+  if(L.fmt==='bullet'){const css={'•':'disc','●':'disc','○':'circle','◦':'circle','▪':'square','■':'square'}[mk];if(css)native={tag:'ul',css}}
+  else if(OLT[L.fmt]&&new RegExp('^%'+(ilvl+1)+'\\.$').test(L.text))native={tag:'ol',type:OLT[L.fmt],start:c[ilvl]};
+  return {mk,left,hang,bullet:L.fmt==='bullet',numId,ilvl,native};
 }
 function styleProps(id,seen=new Set()){
   const st=STY.styles[id];if(!st||seen.has(id))return {};seen.add(id);
@@ -605,24 +609,68 @@ function cleanTable(tb){
   return tb.replace(/\s*\n\s*/g,' ');
 }
 /* Quebra o HTML do Moodle nos mesmos pedaços que moodleSeq, mas guardando o HTML de cada um */
+/* Listas no formato do Moodle (<ul>/<ol> com <li>): ficam inteiras, nunca são desmontadas */
+const OL_TYPE_DESC={I:'numeração romana (I, II, III…)',i:'numeração romana minúscula (i, ii, iii…)',A:'letras maiúsculas (A, B, C…)',a:'letras (a, b, c…)','1':'números (1, 2, 3…)'};
+function cleanListEl(el){
+  el.querySelectorAll('span').forEach(sp=>{if(!sp.className&&!sp.getAttribute('lang')){sp.replaceWith(...sp.childNodes)}});
+  el.querySelectorAll('li').forEach(li=>{li.removeAttribute('style')});
+  // texto "colado" do Word (quebras de linha) vira espaço simples
+  el.querySelectorAll('li').forEach(li=>{for(const n of [...li.childNodes])if(n.nodeType===3)n.textContent=n.textContent.replace(/\s*\n\s*/g,' ')});
+}
+function extractLists(h){
+  if(!/<(ul|ol)\b/i.test(h))return {h,lists:[]};
+  const doc=new DOMParser().parseFromString('<body>'+h+'</body>','text/html');const lists=[];
+  const top=[...doc.body.querySelectorAll('ul,ol')].filter(el=>!el.parentElement.closest('ul,ol'));
+  for(const el of top){cleanListEl(el);lists.push(el.outerHTML.replace(/\s*\n\s*/g,' '));el.replaceWith(doc.createTextNode(`\u0001L${lists.length-1}\u0001`))}
+  return {h:doc.body.innerHTML,lists};
+}
+function listsInfo(h){
+  if(!/<(ul|ol)\b/i.test(h))return [];
+  const doc=new DOMParser().parseFromString('<body>'+h+'</body>','text/html');
+  return [...doc.body.querySelectorAll('ul,ol')].filter(el=>!el.parentElement.closest('ul,ol')).map(el=>{
+    const items=[...el.children].filter(c=>c.tagName==='LI').map(li=>norm(li.textContent));
+    const ol=el.tagName==='OL',type=ol?(el.getAttribute('type')||'1'):null;
+    const dup=items.filter(t=>MK_RE.test(t)).length;   // marcador digitado dentro de item que já é numerado
+    return {ol,type,start:+(el.getAttribute('start')||1),items,dup,
+      desc:ol?(OL_TYPE_DESC[type]||'numeração'):'marcadores (•)',inP:false};
+  });
+}
 function moodleChunks(h){
   const tables=[];
   h=h.replace(/\s*\n\s*/g,' ');
   h=h.replace(/<table[\s\S]*?<\/table>/gi,m=>{tables.push(m);return `\u0001X${tables.length-1}\u0001`});
+  const LX=extractLists(h);h=LX.h;
   h=h.replace(/<span>|<\/span>/gi,'');
   h=h.replace(/<p[^>]*>(\s|&nbsp;| |<br\s*\/?>|<\/?span[^>]*>)*<\/p>/gi,'\u0001E\u0001');
   h=h.replace(/<br\s*\/?>/gi,'\u0001B\u0001').replace(/<\/?(p|div|li|h\d|ul|ol|blockquote)\b[^>]*>/gi,'\u0001P\u0001');
-  const toks=h.split(/(\u0001(?:[BPE]|X\d+)\u0001)/);
+  const toks=h.split(/(\u0001(?:[BPE]|X\d+|L\d+)\u0001)/);
   const out=[];let b=0,p=0,e=0;
   for(const tk of toks){
     if(tk==='\u0001B\u0001')b++;else if(tk==='\u0001P\u0001')p++;else if(tk==='\u0001E\u0001')e++;
     else if(/^\u0001X\d+\u0001$/.test(tk)){out.push({table:true,html:cleanTable(tables[+tk.slice(2,-1)]),text:'[TABELA]',b,p,e});b=p=e=0}
+    else if(/^\u0001L\d+\u0001$/.test(tk)){out.push({table:true,list:true,html:LX.lists[+tk.slice(2,-1)],text:'[LISTA]',b,p,e});b=p=e=0}
     else{const txt=norm(tk.replace(/<img[^>]*>/gi,' [IMG] ').replace(/<[^>]+>/g,''));if(!txt&&!/<img/i.test(tk))continue;
       out.push({html:tk.trim().replace(/^(&nbsp;|\s)+|(&nbsp;|\s)+$/g,''),text:txt,img:/<img/i.test(tk),b,p,e});b=p=e=0}
   }
   return out;
 }
+/* questão já formatada (tem entrelinha/alinhamento por parágrafo): só arruma listas dentro de parágrafo e sobras vazias */
+function minimalFix(h){
+  const doc=new DOMParser().parseFromString('<body>'+h+'</body>','text/html');
+  doc.body.querySelectorAll('ul,ol').forEach(el=>{if(!el.parentElement.closest('ul,ol'))cleanListEl(el)});
+  doc.body.querySelectorAll('p').forEach(p=>{if(!norm(p.textContent)&&!p.querySelector('img,table,ul,ol'))p.remove()});
+  // tira tamanho/fonte de letra colados do editor (font-size, font-family), que mudam a letra em relação ao tema
+  doc.body.querySelectorAll('[style]').forEach(el=>{
+    const st=(el.getAttribute('style')||'').split(';').map(x=>x.trim()).filter(Boolean);
+    const keep=st.filter(x=>!/^(font-size|font-family|mso-[a-z-]+)\s*:/i.test(x)&&!(el.tagName==='SPAN'&&/^(text-indent|line-height)\s*:/i.test(x)));
+    if(keep.length===st.length)return;
+    if(keep.length)el.setAttribute('style',keep.join(';'));else el.removeAttribute('style');
+    if(el.tagName==='SPAN'&&!el.attributes.length)el.replaceWith(...el.childNodes)});
+  doc.body.querySelectorAll('ul,ol').forEach(el=>{if(!el.parentElement.closest('ul,ol')&&!/margin/.test(el.getAttribute('style')||''))el.setAttribute('style','margin:0 0 1.15em')});
+  return doc.body.innerHTML.replace(/\s*\n\s*/g,' ');
+}
 function fixQuestionHtml(h,w,media,opts={}){
+  if(!w&&/<p\b[^>]*style="[^"]*line-height/i.test(h)&&!/<br\s*\/?>\s*<br/i.test(h))return minimalFix(h);
   const C=moodleChunks(h);
   const W=w?wordSeq(w.enun):null;
   const useW=W&&W.texts.length===C.length&&W.texts.every((t,i)=>ns(t)===ns(C[i].text));
@@ -667,6 +715,7 @@ function fixQuestionHtml(h,w,media,opts={}){
     return restoreItalic(out,w);
   }
   C.forEach((c,i)=>{
+    if(c.list){paras.push({block:true,html:c.html.replace(/^<(ul|ol)\b([^>]*?)(\sstyle="[^"]*")?>/i,(m,t,a)=>`<${t}${a} style="margin:0 0 1em">`)});cur=null;return}
     if(c.table){paras.push({block:true,html:c.html.replace(/margin:0 0 0em/,'margin:0 0 1em')});cur=null;return}
     let html=c.html.replace(/<img\b[^>]*>/gi,t=>{const wi=wImgs[imgK++];
       if(wi&&wi.cx&&!/\swidth=/i.test(t))t=t.replace(/<img/i,`<img width="${Math.round(wi.cx/9525)}"`);return t});
@@ -756,7 +805,22 @@ async function wordToMoodle(w,mSrcs,media,opts={},qname='q'){
     if(blocks[j+1]&&!blocks[j+1].table&&CAP_SRC.test(blocks[j+1].text))blocks[j+1].cap=true});
   const wp=w.enun.filter(e=>e.k==='p'),rf=refFlags(wp),refSet=new Set(wp.filter((e,i)=>rf[i]));
   const fx=n=>String(Math.round(n*100)/100);
-  let html=blocks.map(b=>{
+  // listas do Word que o Moodle sabe mostrar sozinho (•, ○, ▪, 1., a., A., i., I.) viram <ul>/<ol>; as demais levam o marcador do Word
+  const nativeHtml=(items)=>{let h='',st=[];const pad0=Math.max(0.63,items[0].para.leftCm||1.27);
+    for(const b of items){const L=b.para.list,lv=L.ilvl||0;
+      while(st.length&&st[st.length-1].lv>lv)h+='</li></'+st.pop().tag+'>';
+      if(!st.length||st[st.length-1].lv<lv){const n=L.native;const pad=st.length?0.75:pad0;
+        h+=(n.tag==='ul'?`<ul style="list-style-type:${n.css};margin:0;padding-left:${fx(pad)}cm">`:`<ol type="${n.type}" start="${n.start}" style="margin:0;padding-left:${fx(pad)}cm">`)+'<li';st.push({lv,tag:n.tag})}
+      else h+='</li><li';
+      const al={both:'justify',center:'center',right:'right'}[b.para.jc]||'left';
+      h+=` style="text-align:${al};line-height:${fx(Math.max(1,b.para.lineEm||1.725))}">`+b.html}
+    while(st.length)h+='</li></'+st.pop().tag+'>';
+    const mb=items[items.length-1].mb;return h.replace(/^(<(?:ul|ol)\b[^>]*?)margin:0;/,(m,a)=>`${a}margin:0 0 ${fx(mb)}em;`)};
+  const groups=[];for(let i=0;i<blocks.length;i++){const b=blocks[i];const L=b.para&&b.para.list;
+    if(L&&L.native&&!b.table){const g=[b];let j=i+1;while(j<blocks.length&&blocks[j].para&&blocks[j].para.list&&blocks[j].para.list.native&&blocks[j].para.list.numId===L.numId){g.push(blocks[j]);j++}
+      groups.push({native:g});i=j-1}else groups.push(b)}
+  let html=groups.map(b=>{
+    if(b.native)return nativeHtml(b.native);
     if(b.table)return b.html.replace('<table>',`<table style="border-collapse:collapse;margin:0 auto ${fx(b.mb)}em auto">`);
     const pr=b.para;const onlyImg=(pr.imgs.length&&!norm(pr.t))||b.onlyMath;
     const al=(b.cap||onlyImg)?'center':({both:'justify',distribute:'justify',center:'center',right:'right',end:'right'}[pr.jc]||'left');
@@ -927,7 +991,7 @@ async function analyze(word,moodle){
     mqs.forEach(m=>{if(!used.has(m))pairs.push({w:null,m})});
   }else mqs.forEach(m=>pairs.push({w:null,m}));
 
-  const flatQs=new Set(),charQs=new Set(),eqQs=new Set(),dupQs=new Set(),mkQs=new Set();
+  const flatQs=new Set(),charQs=new Set(),eqQs=new Set(),dupQs=new Set(),mkQs=new Set();const mlistQs=[];
   let italLost=0,gluedTotal=0;const gluedQs=[],biggerQs=[],smallerQs=[];
   for(const {w,m} of pairs){
     const Q={n:w?w.n:(m.num??0),name:m?m.name:'(não encontrada no Moodle)',area:w?.area||'',tipo:w?.tipo||'',issues:[]};
@@ -944,8 +1008,9 @@ async function analyze(word,moodle){
       let wt=wl.filter(Boolean).map(stripMk),mt=ml.filter(Boolean).map(stripMk);
       // marcadores e numeração do Word: conferir se chegaram ao Moodle
       {const items=w.enun.filter(e=>e.k==='p'&&e.list);
-       if(items.length){const raw=ml.filter(Boolean);const hasLi=/<li\b/i.test(h);
-         const miss=items.filter(e=>{const t=ns(e.t.replace(/\n/g,' '));const line=raw.find(x=>ns(stripMk(x))===t||ns(stripMk(x)).startsWith(t.slice(0,40)));
+       if(items.length){const raw=ml.filter(Boolean);const hasLi=false;
+         const liSet=new Set(listsInfo(h).flatMap(l=>l.items.map(t=>ns(stripMk(t)))));
+         const miss=items.filter(e=>{const t=ns(e.t.replace(/\n/g,' '));if(liSet.has(t))return false;const line=raw.find(x=>ns(stripMk(x))===t||ns(stripMk(x)).startsWith(t.slice(0,40)));
            if(!line)return false;if(hasLi&&new RegExp('<li[^>]*>(\\s|<[^>]+>)*'+t.slice(0,12).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(h.replace(/\s+/g,'')))return false;return ns(line)===ns(stripMk(line))});
          if(miss.length){mkQs.add(Q.name);add('atencao','Marcadores',`${miss.length} ${miss.length===1?'item de lista perdeu':'itens de lista perderam'} o marcador ou a numeração do Word`,`No Word esses parágrafos têm ${[...new Set(miss.map(e=>e.list.mk))].slice(0,4).map(x=>'“'+x+'”').join(', ')} e recuo de lista. No Moodle aparecem como texto comum. A correção automática coloca os marcadores e o recuo como no Word. Itens: `+miss.slice(0,4).map(e=>'“'+short(norm(e.t),50)+'”').join(', '))}}}
       // tabela do Word que chegou ao Moodle como texto solto: tira as células do texto e avisa em Tabelas
@@ -1021,6 +1086,12 @@ async function analyze(word,moodle){
     if(mqs.length>3&&(/<p[\s>]/i.test(h))!==majorityP)add('atencao','Espaçamento','HTML em formato diferente das demais questões',majorityP?'Esta questão usa quebras de linha enquanto a maioria usa parágrafos.':'Esta questão usa parágrafos (<p>), como texto colado direto do Word, enquanto a maioria usa quebras de linha. O espaçamento entre parágrafos fica visivelmente diferente das outras.');
     const wordCss=(h.match(/mso-[a-z-]+|font-family|font-size/gi)||[]);
     if(wordCss.length)add('atencao','Formatação','Estilos herdados do Word no HTML',`Encontrado: ${[...new Set(wordCss.map(s=>s.toLowerCase()))].slice(0,6).join(', ')}. Isso pode mudar fonte, tamanho ou espaçamento em relação ao tema do Moodle.`);
+    // ----- Listas do Moodle (<ul>/<ol>): identificar tipo e problemas
+    {const L=listsInfo(m.html);
+     if(L.length){mlistQs.push({q:Q.name,d:[...new Set(L.map(l=>l.desc))]});
+       add('info','Marcadores',`${L.length===1?'Lista':L.length+' listas'} no formato do Moodle: ${[...new Set(L.map(l=>l.desc+' com '+l.items.length+' itens'))].join('; ')}`,'A lista já está no formato próprio do Moodle e é mantida assim na correção.');
+       const dup=L.filter(l=>l.dup);if(dup.length)add('atencao','Marcadores','Numeração ou marcador repetido dentro da lista',`O Moodle já numera os itens (${dup[0].desc}), e o texto do item também começa com um marcador, então aparece duas vezes. Ex.: “${short(dup[0].items.find(t=>MK_RE.test(t)),70)}”.`);
+       if(/<p\b[^>]*>\s*<(ul|ol)\b/i.test(m.html))add('atencao','Marcadores','Lista colocada dentro de um parágrafo','A lista está dentro de um <p>, uma estrutura inválida que alguns navegadores mostram com espaço ou recuo errado. A correção automática tira a lista de dentro do parágrafo e mantém os marcadores.')}}
     // ----- Fórmulas
     if(wMaths.length){const native=/\\\(|\\\[|\$\$|<math\b/i.test(h);
       if(eqImgs<wMaths.length&&!native){eqQs.add(Q.name);add('atencao','Fórmulas',`${wMaths.length===1?'Equação do Word chegou':wMaths.length+' equações do Word chegaram'} como texto digitado`,'No Moodle a equação aparece em uma linha só, sem frações, somatório, raízes e expoentes montados como no Word. A correção automática insere cada equação como imagem, igual à do Word: '+wMaths.slice(0,3).map(x=>'“'+short(x.t,70)+'”').join(', '))}}
@@ -1145,6 +1216,8 @@ async function analyze(word,moodle){
     const wN=word.qs.length;if(wN!==mqs.length)report.global.push(['erro',`O Word tem ${wN} questões e o XML do Moodle tem ${mqs.length}.`]);
   }
   // (as duplicidades aparecem no alerta em destaque no topo do relatório)
+  if(mlistQs.length){const byD={};mlistQs.forEach(x=>x.d.forEach(d=>(byD[d]=byD[d]||[]).push(x.q)));
+    report.global.push(['info',`Listas no formato do Moodle em ${mlistQs.length} questão(ões): `+Object.entries(byD).map(([d,qs])=>`${d} em ${qs.join(', ')}`).join('; ')+'. Elas são mantidas na correção, com os marcadores e a numeração.'])}
   return report;
 }
 /* alternativas repetidas (iguais ignorando maiúsculas, espaços e pontuação) ou quase iguais */
@@ -1162,6 +1235,10 @@ function dupCheck(texts,where){
   // quase iguais (diferem em poucos caracteres)
   for(let i=0;i<texts.length;i++)for(let j=i+1;j<texts.length;j++){
     const a=K[i],b=K[j];if(!a||!b||a===b)continue;
+    // alternativas de combinação (I, II e IV; V-F-V; a e c; 1 e 3) diferem só nos numerais: não são "quase iguais"
+    let pp=0;while(pp<a.length&&pp<b.length&&a[pp]===b[pp])pp++;let sf=0;while(sf<a.length-pp&&sf<b.length-pp&&a[a.length-1-sf]===b[b.length-1-sf])sf++;
+    const da=a.slice(pp,a.length-sf),db=b.slice(pp,b.length-sf);
+    if(/^[ivxlcdmfe0-9abcd]*$/.test(da)&&/^[ivxlcdmfe0-9abcd]*$/.test(db))continue;
     if(Math.min(a.length,b.length)>25&&similar(a,b)>=0.9)out.push({sev:'erro',dup:true,kind:'quase igual',letters:[L[i],L[j]],text:norm(texts[i])+' | '+norm(texts[j]),
       title:`Alternativas ${L[i]} e ${L[j]} quase iguais`,detail:`Mudam só em poucos caracteres. ${L[i]}: “${short(norm(texts[i]),90)}” · ${L[j]}: “${short(norm(texts[j]),90)}”. Não foi alterado automaticamente: encaminhe para correção.`});
   }
