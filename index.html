@@ -129,6 +129,15 @@ button{font:inherit;cursor:pointer}
 .dupkind{display:inline-block;background:var(--err);color:var(--surface);border-radius:6px;padding:1px 8px;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .dupbtn{align-self:flex-start;background:var(--err);color:var(--surface);border:0;border-radius:8px;padding:9px 16px;font-weight:600}
 .dupbtn:focus-visible{outline:2px solid var(--err);outline-offset:2px}
+.aitopic{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+@media (max-width:760px){.aitopic{grid-template-columns:1fr}}
+.aitext{display:flex;flex-direction:column;gap:6px;min-width:0}.aitext p{margin:0 0 4px;color:var(--muted);font-size:.9rem;max-width:80ch}
+.aitext label{font-size:.85rem;font-weight:600;margin-top:4px}
+.aitext input,.aitext textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
+.aitext input:focus-visible,.aitext textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.aiactions{display:flex;flex-direction:column;gap:8px;min-width:200px}.aistatus{font-size:.85rem;color:var(--muted);max-width:240px}
+.sit{display:inline-block;white-space:nowrap;border-radius:6px;padding:1px 8px;font-size:.78rem;font-weight:700;color:var(--surface)}
+.sit.fora{background:var(--err)}.sit.parcial{background:var(--warn)}.sit.estat{background:var(--info)}
 .dupalert.topic{border-color:var(--warn);background:var(--warn-soft)}
 .dupalert.topic h2{color:var(--warn)}.dupalert.topic .ico{background:var(--warn)}
 .dupalert.topic .dupkind{background:var(--warn)}.dupalert.topic .dupbtn{background:var(--warn)}
@@ -142,7 +151,7 @@ button{font:inherit;cursor:pointer}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 09/10 10h30</span></div>
+    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 09/10 11h00</span></div>
     <h1>Curadoria Word × Moodle</h1>
     <p class="lede">Compare o Word original com o XML exportado do Moodle depois da importação. A ferramenta confere texto, espaçamento, imagens, tabelas, alternativas, gabarito e formatação, questão por questão. Feedback e dificuldade ficam de fora, porque não são importados para o Moodle. Os arquivos são lidos só no seu navegador e não são enviados para nenhum servidor.</p>
   </header>
@@ -161,7 +170,7 @@ button{font:inherit;cursor:pointer}
   <section id="intro" class="notes">
     <h2>O que é verificado</h2>
     <ul>
-      <li><b>Tema:</b> questões que destoam do assunto da disciplina, por usarem um vocabulário muito diferente das demais questões do mesmo arquivo (por exemplo, questão de outro curso misturada no banco). Aparece num alerta em destaque e nunca é alterada; a partir de 8 questões.</li>
+      <li><b>Tema:</b> questões que destoam do assunto da disciplina, por usarem um vocabulário muito diferente das demais questões do mesmo arquivo (por exemplo, questão de outro curso misturada no banco). Aparece num alerta em destaque e nunca é alterada; a partir de 8 questões. Além disso, a ferramenta identifica a <b>área da disciplina</b> pelo nome (e pela ementa, se informada) e a área de cada questão pelo texto, e aponta as questões de outra área ou só em parte ligadas (ex.: questões de Inteligência Artificial numa disciplina de Administração), tudo dentro da própria ferramenta.</li>
       <li><b>Texto:</b> enunciado igual ao do Word, sem trechos faltando ou sobrando, e caracteres especiais iguais aos do Word (símbolos, letras gregas, sobrescritos, fórmulas).</li>
       <li><b>Parágrafos:</b> parágrafos do Word que ficaram colados no Moodle, linhas em branco que sumiram ou sobraram e recuo da primeira linha que não chegou ao Moodle.</li>
       <li><b>Espaçamento:</b> espaço entre parágrafos igual ao do Word (nem menor, nem maior), parágrafos vazios e quebras de linha em excesso.</li>
@@ -187,6 +196,22 @@ button{font:inherit;cursor:pointer}
   </section>
   <section id="dupAlert" class="dupalert" hidden role="alert"></section>
   <section id="topicAlert" class="dupalert topic" hidden role="alert"></section>
+  <section id="aiTopic" class="aitopic" hidden>
+    <div class="aitext">
+      <h2>Tema da disciplina</h2>
+      <p>A ferramenta lê cada questão e identifica a área do conhecimento do assunto cobrado, comparando com a área da disciplina. Aponta, por exemplo, uma disciplina de Administração com questões que só tratam de Inteligência Artificial. Tudo é feito aqui, sem enviar nada para fora. Nada é alterado no XML. Confira o nome sugerido da disciplina e clique em <b>Conferir tema</b> se mudar algo.</p>
+      <label for="discName">Disciplina</label>
+      <input id="discName" type="text" placeholder="Ex.: Gestão de Pessoas">
+      <label for="discEmenta">Ementa ou principais assuntos (opcional, melhora a conferência)</label>
+      <textarea id="discEmenta" rows="3" placeholder="Cole aqui a ementa ou os assuntos da disciplina"></textarea>
+    </div>
+    <div class="aiactions">
+      <button class="btn" id="aiRun">Conferir tema</button>
+      <button class="ghost" id="aiStop" hidden>Parar</button>
+      <div class="aistatus" id="aiStatus" role="status"></div>
+    </div>
+  </section>
+
   <section id="summary" class="summary" hidden></section>
   <section id="results" hidden>
     <div class="toolbar">
@@ -1323,7 +1348,8 @@ $('#run').addEventListener('click',async()=>{
     const rep=await analyze(word&&word.qs.length?word:null,moodle);
     rep.source={docx:files.docx?.name||null,xml:files.xml.name};
     window.__report=rep;REPORT=rep;catFilter=null;$('#banner').hidden=true;
-    LAST={word:word&&word.qs.length?word:null,xmlText,moodle,name:files.xml.name};$('#fixbox').hidden=false;render();
+    LAST={word:word&&word.qs.length?word:null,xmlText,moodle,name:files.xml.name};$('#fixbox').hidden=false;
+    $('#discName').value=guessDiscipline(xmlText,files.xml.name);render();setupAiTopic();
     status(`Pronto: ${rep.questions.length} questões conferidas.`);
   }catch(e){console.error(e);status(e.message||'Não foi possível ler os arquivos.',true)}
   $('#run').disabled=!files.xml;
@@ -1336,22 +1362,129 @@ function dupRequestText(R){
   for(const q of rows){L.push(`${q.name}${q.area?' ('+q.area+')':''}:`);for(const d of q.dups)L.push(`  - ${d.title.replace(/:.*/, '')}: alternativas ${d.letters.join(', ')} — ${d.where==='Word'?'já está assim no Word':'aparece assim no Moodle'} — “${short(d.text,160)}”`);L.push('')}
   return L.join('\n');
 }
+function guessDiscipline(xmlText,fname){
+  const cats=[...xmlText.matchAll(/<question type="category">\s*<category>\s*<text>([^<]*)<\/text>/g)].map(m=>m[1]);
+  const segs=cats.flatMap(c=>c.split('/')).map(x=>decode(x).trim()).filter(x=>x&&!/^\$(course|cat|system|module)\$$|^top$|^padr[ãa]o/i.test(x)&&!/^(atividade|avalia[çc][ãa]o|prova|simulado|quest[õo]es|banco|enade)\b/i.test(x));
+  if(segs.length)return segs[0];
+  const f=(fname||'').replace(/\.xml$/i,'').replace(/^quest\S*-/i,'').replace(/[_]+/g,' ').replace(/-\d{8}-\d{4}$/,'').replace(/\s+-\s+/g,' – ').trim();
+  return f.slice(0,120);
+}
+/* ---------- áreas do conhecimento (vocabulário típico, sem acento, como início de palavra) ---------- */
+const AREAS={
+ 'Administração e Gestão':{nome:/administra|gest[aã]o|gerenc|marketing|log[ií]stic|recursos humanos|\brh\b|empreend|neg[oó]cio|secretariado|comercio exterior|processos gerenciais/i,
+   k:'administr gestao gestor gerenci empresa empresari organizacion lideranc lider estrategi marketing mercado cliente consumidor venda negocio empreend colaborador funcionari equipe produtividade logistic estoque suprimento fornecedor custo lucro receita orcament competitiv concorr swot stakeholder governanc motivac recrutament selecao desempenho meta planejament controle gerente diretor setor departament'},
+ 'Tecnologia e Inteligência Artificial':{nome:/intelig[eê]ncia artificial|computa|inform[aá]tica|sistemas de informa|software|program|ci[eê]ncia de dados|an[aá]lise e desenvolvimento|redes de computadores|tecnologia da informa|ciberseg|banco de dados|\bti\b|\bia\b/i,
+   k:'artificial algoritm software hardware programac programador codigo python java javascript sql neural chatbot llm gpt computac computador ciberseg criptograf servidor internet aplicativo automac robo robotic deep learning machine dataset analytics blockchain nuvem cloud digital tecnologic plataforma online virtual api frontend backend dados big rede redes'},
+ 'Direito':{nome:/direito|jur[ií]dic|legisla|criminal|penal|constitucional/i,
+   k:'direito legisl juridic constituc civil penal crime criminal tribunal juiz processual jurisprud advog sentenc stf stj ilicit reu autor acao recurso codigo artigo inciso decreto norma normativ contrato contratual indeniz responsabilidade'},
+ 'Saúde':{nome:/sa[uú]de|medicina|enfermagem|farm[aá]cia|biomedicina|fisioterapia|odontologia|nutri[cç][aã]o|psicologia hospitalar|cl[ií]nic|patolog|anatomia|fisiologia/i,
+   k:'paciente clinic doenc diagnost tratament medicament farmac farmaceut hospital enferm sintoma terapia terapeut saude cirurg infecc vacina exame laborator sangue celula patolog fisiolog anatom dose posolog prescric epidemiol renal cardiac glicem insulin hipertens diabet antibiot plasma soro hemoli bioquim analit'},
+ 'Agronomia e Ciências Agrárias':{nome:/agro|agr[ií]col|agr[aá]ri|zootecnia|veterin[aá]ria|florestal|agronegócio/i,
+   k:'lavoura plantio safra adubac fertiliz irrigac pastagem pastejo forrag semente colheita agricol agronom praga herbicid fitossan rebanho bovino milho soja trigo cultivo cultivar agropecu fazenda rural calag gessag erosao terrac talhao produtividade solo plantas folha raiz germinac colhedora trator'},
+ 'Engenharia e Exatas':{nome:/engenharia (civil|mec[aâ]nica|el[eé]trica|de produ|qu[ií]mica)|f[ií]sica|matem[aá]tica|c[aá]lculo|arquitetura/i,
+   k:'estrutur concreto resistenc tensao viga circuito eletric eletron mecanic termodin fluido calculo equac derivad integral vetor matriz material materiais carga potencia energia velocidade aceleracao forca torque'},
+ 'Contabilidade e Finanças':{nome:/cont[aá]b|financ|econom|tribut|auditoria|atuari/i,
+   k:'contab balanc ativo passivo patrimon debito credito tribut imposto fiscal lancament demonstrac depreciac auditori juros capital caixa amortiz investiment financ economi inflac cambio dividend acionista'},
+ 'Educação':{nome:/educa[cç][aã]o|pedagog|licenciatura|did[aá]tica|ensino/i,
+   k:'ensino aprendizagem aluno estudante professor docente escola escolar pedagog didatic curricul educac alfabetiz bncc inclusao turma sala aula'},
+ 'Psicologia':{nome:/psicolog/i,
+   k:'psicolog comportament cognitiv emocion personalidade freud transtorno ansiedade depressao psiquic subjetiv psicoterap'},
+ 'Segurança':{nome:/seguran[cç]a (privada|p[uú]blica)|vigil[aâ]ncia|criminal[ií]stica/i,
+   k:'seguranca vigilan vigilante policia porte arma patrulh ronda monitorament cftv acesso flagrante'},
+ 'Meio Ambiente':{nome:/ambient|ecolog|sustentab|gest[aã]o ambiental/i,
+   k:'ambient sustentab ecolog poluic residuo reciclag biodivers desmatament emissao carbono climat'},
+ 'Letras e Comunicação':{nome:/letras|l[ií]ngua|comunica[cç][aã]o|jornalismo|publicidade|portugu[eê]s/i,
+   k:'lingu gramatic literatur poema sintax semant morfolog oracao verbo substantiv jornal publicidade midia narrativa'}
+};
+// áreas vizinhas: questões delas não contam como "fora do tema" (no máximo "em parte")
+const RELATED={
+ 'Administração e Gestão':['Contabilidade e Finanças','Direito','Psicologia','Letras e Comunicação'],
+ 'Tecnologia e Inteligência Artificial':['Engenharia e Exatas'],
+ 'Direito':['Administração e Gestão','Contabilidade e Finanças','Segurança','Meio Ambiente'],
+ 'Saúde':['Psicologia','Administração e Gestão','Educação'],
+ 'Agronomia e Ciências Agrárias':['Engenharia e Exatas','Meio Ambiente','Contabilidade e Finanças','Tecnologia e Inteligência Artificial'],
+ 'Engenharia e Exatas':['Tecnologia e Inteligência Artificial','Meio Ambiente','Administração e Gestão'],
+ 'Contabilidade e Finanças':['Administração e Gestão','Direito'],
+ 'Educação':['Psicologia','Letras e Comunicação','Tecnologia e Inteligência Artificial'],
+ 'Psicologia':['Saúde','Educação','Administração e Gestão'],
+ 'Segurança':['Direito','Administração e Gestão','Tecnologia e Inteligência Artificial'],
+ 'Meio Ambiente':['Agronomia e Ciências Agrárias','Engenharia e Exatas','Direito'],
+ 'Letras e Comunicação':['Educação','Administração e Gestão']
+};
+const AREA_KEYS=Object.fromEntries(Object.entries(AREAS).map(([a,v])=>[a,v.k.split(' ')]));
+const fold=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+function areaScores(text){
+  // palavra original (com acento) para mostrar; comparação sem acento
+  const orig={};for(const w of (text.toLowerCase().match(/[a-zà-ÿ]{3,}/g)||[])){const f=fold(w);if(!orig[f])orig[f]=w}
+  const words=Object.keys(orig);const sc={};const hits={};
+  for(const [a,ks] of Object.entries(AREA_KEYS)){const h=new Map();for(const w of words)for(const k of ks)if(w.startsWith(k)){if(!h.has(k))h.set(k,orig[w]);break}sc[a]=h.size;hits[a]=[...h.values()]}
+  return {sc,hits};
+}
+function disciplineAreas(name,ementa,qs){
+  const byName=Object.entries(AREAS).filter(([a,v])=>v.nome.test(name)).map(x=>x[0]);
+  let areas=byName,how='pelo nome da disciplina';
+  if(ementa){const {sc}=areaScores(ementa+' '+name);const top=Object.entries(sc).sort((a,b)=>b[1]-a[1]);if(top[0][1]>=2){areas=[...new Set([...areas,...top.filter(x=>x[1]>=Math.max(2,top[0][1]*0.6)).map(x=>x[0])])];how=byName.length?'pelo nome e pela ementa':'pela ementa'}}
+  if(!areas.length){ // não reconheceu pelo nome: áreas que predominam nas questões (todas as que aparecem em pelo menos 20% delas)
+    const tot={};qs.forEach(q=>{const {sc}=areaScores(q.topicText||'');const t=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];if(t[1]>=3)tot[t[0]]=(tot[t[0]]||0)+1});
+    const best=Object.entries(tot).sort((a,b)=>b[1]-a[1]).filter(x=>x[1]>=Math.max(2,qs.length*0.2)).map(x=>x[0]);
+    if(best.length){areas=best;how='pelas áreas que predominam nas questões, porque o nome da disciplina não foi reconhecido'}}
+  // termos próprios da disciplina (nome + ementa) também contam como "do tema"
+  const own=[...new Set((fold(name+' '+(ementa||'')).match(/[a-z]{5,}/g)||[]).filter(w=>!STOP.has(w)).map(w=>w.slice(0,6)))];
+  return {areas,how,own};
+}
+function runLocalTopic(){
+  const R=REPORT;if(!R)return;const name=$('#discName').value.trim(),ementa=$('#discEmenta').value.trim();
+  const qs=R.questions.filter(q=>q.topicText);
+  qs.forEach(q=>{delete q.aiTopic;q.issues=q.issues.filter(x=>!(x.cat==='Tema'&&x.ai))});
+  const D=disciplineAreas(name,ementa,qs);R.aiDisc=name;R.aiAreas=D;
+  if(!D.areas.length){$('#aiStatus').textContent='Não foi possível reconhecer a área da disciplina. Escreva um nome mais completo (ex.: “Gestão de Pessoas”) ou cole a ementa.';render();return}
+  let fora=0,parc=0;
+  for(const q of qs){
+    const {sc,hits}=areaScores(q.topicText);const f=fold(q.topicText);
+    const discHits=new Set(D.areas.flatMap(a=>hits[a]));D.own.forEach(o=>{if(f.includes(o))discHits.add(o)});
+    const ds=discHits.size;
+    const other=Object.entries(sc).filter(([a])=>!D.areas.includes(a)).sort((a,b)=>b[1]-a[1])[0];
+    if(!other||other[1]<3)continue;
+    // a questão só é apontada se a outra área predomina sobre a da disciplina
+    if(other[1]<=ds)continue;
+    const near=D.areas.some(a=>(RELATED[a]||[]).includes(other[0]));
+    let sit=null;
+    if(near){if(ds===0&&other[1]>=4)sit='parcial'}
+    else if(ds<=1)sit='fora';
+    else if(ds<other[1]/2&&other[1]>=4)sit='parcial';
+    if(!sit)continue;
+    q.aiTopic={sit,assunto:other[0],motivo:`O texto trata de ${other[0]} (${hits[other[0]].slice(0,5).join(', ')})${ds?` e tem pouca ligação com ${D.areas.join(' / ')}`:`, sem termos de ${D.areas.join(' / ')}`}.`};
+    if(sit==='fora')fora++;else parc++;
+    q.issues.unshift({sev:sit==='fora'?'erro':'atencao',cat:'Tema',ai:true,title:sit==='fora'?`Assunto de outra área: ${other[0]}`:`Só em parte ligada à disciplina (assunto principal: ${other[0]})`,detail:`Disciplina: “${name}” (área ${D.areas.join(' / ')}, identificada ${D.how}). ${q.aiTopic.motivo} Confira se a questão pertence a esta disciplina. Nada foi alterado.`});
+  }
+  $('#aiStatus').textContent=`Área da disciplina: ${D.areas.join(' / ')} (${D.how}). ${fora} questão(ões) de outra área, ${parc} só em parte ligada(s).`;
+  render();
+}
+function setupAiTopic(){
+  $('#aiTopic').hidden=false;
+  if(!setupAiTopic.done){setupAiTopic.done=true;$('#aiRun').addEventListener('click',runLocalTopic);$('#aiStop').remove()}
+  runLocalTopic();
+}
 function topicRequestText(R){
-  const rows=R.questions.filter(q=>q.offTopic);
+  const rows=R.questions.filter(q=>q.offTopic||(q.aiTopic&&q.aiTopic.sit!=='relacionada'));
   const L=['Conferência de tema: questões possivelmente fora da disciplina','',`Disciplina/arquivo: ${R.source?.xml||''}`,'',
     'As questões abaixo usam um vocabulário muito diferente das demais questões da disciplina. Nada foi alterado. Por favor, confiram se pertencem a esta disciplina:',''];
-  for(const q of rows)L.push(`${q.name}: termos da questão — ${q.offTopic.own.join(', ')}`);
-  L.push('',`Termos mais comuns na disciplina: ${(rows[0]?.offTopic.disc||[]).join(', ')}`);
+  for(const q of rows)L.push(q.aiTopic&&q.aiTopic.sit!=='relacionada'?`${q.name}: ${q.aiTopic.sit==='fora'?'fora do tema':'só em parte ligada'} — assunto: ${q.aiTopic.assunto}. ${q.aiTopic.motivo}`:`${q.name}: vocabulário diferente das demais — ${q.offTopic.own.join(', ')}`);
+  if(R.aiDisc)L.splice(3,0,`Disciplina considerada: ${R.aiDisc}`);
   return L.join('\n');
 }
 function renderTopicAlert(R){
-  const box=$('#topicAlert');const rows=R.questions.filter(q=>q.offTopic);
+  const box=$('#topicAlert');const rows=R.questions.filter(q=>q.offTopic||(q.aiTopic&&q.aiTopic.sit!=='relacionada'));
   if(!rows.length){box.hidden=true;box.innerHTML='';return}
+  rows.sort((a,b)=>((b.aiTopic?.sit==='fora')-(a.aiTopic?.sit==='fora')));
   box.hidden=false;
-  box.innerHTML=`<h2><span class="ico" aria-hidden="true">?</span>${rows.length===1?'1 questão possivelmente fora do tema':rows.length+' questões possivelmente fora do tema'} da disciplina</h2>
-    <p>${rows.length===1?'Esta questão usa':'Estas questões usam'} um vocabulário muito diferente das outras questões da disciplina, por exemplo uma questão de outro curso ou outra disciplina misturada no banco. <b>Nada foi alterado.</b> É um indício, não uma certeza: a pessoa responsável pela disciplina deve conferir.</p>
-    <div class="duptable"><table><thead><tr><th>Questão</th><th>Termos desta questão</th><th>Termos mais comuns na disciplina</th></tr></thead><tbody>
-    ${rows.map(q=>`<tr><td class="q">${esc(q.name)}</td><td>${esc(q.offTopic.own.join(', '))}</td><td>${esc(q.offTopic.disc.join(', '))}</td></tr>`).join('')}
+  const cell=q=>q.aiTopic&&q.aiTopic.sit!=='relacionada'
+    ?`<td><span class="sit ${q.aiTopic.sit}">${q.aiTopic.sit==='fora'?'Fora do tema':'Em parte'}</span></td><td>${esc(q.aiTopic.assunto)}</td><td>${esc(q.aiTopic.motivo)}</td>`
+    :`<td><span class="sit estat">Vocabulário diferente</span></td><td>${esc(q.offTopic.own.join(', '))}</td><td>Termos mais comuns na disciplina: ${esc(q.offTopic.disc.join(', '))}</td>`;
+  box.innerHTML=`<h2><span class="ico" aria-hidden="true">?</span>${rows.length===1?'1 questão possivelmente fora do tema':rows.length+' questões possivelmente fora do tema'} da disciplina${R.aiDisc?` “${esc(R.aiDisc)}”`:''}</h2>
+    <p>${R.aiAreas&&R.aiAreas.areas.length?`A ferramenta leu as questões e apontou as que tratam de assunto de outra área (área da disciplina: ${esc(R.aiAreas.areas.join(' / '))}). `:''}Questões com vocabulário muito diferente das demais também aparecem aqui. <b>Nada foi alterado.</b> A pessoa responsável pela disciplina deve conferir e, se for o caso, pedir a troca da questão.</p>
+    <div class="duptable"><table><thead><tr><th>Questão</th><th>Situação</th><th>Assunto / termos</th><th>Motivo</th></tr></thead><tbody>
+    ${rows.map(q=>`<tr><td class="q">${esc(q.name)}</td>${cell(q)}</tr>`).join('')}
     </tbody></table></div>
     <button class="dupbtn" id="topicCopy">Copiar lista para conferência</button>
     <textarea id="topicBox" hidden style="width:100%;height:140px" readonly></textarea>`;
