@@ -2,12 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Curadoria Word × Moodle</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Curadoria de Questões</title>
 <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -17,6 +16,7 @@
   --accent:#0f5e63; --accent-soft:#e1efef;
   --err:#b42318; --err-soft:#fdecea; --warn:#9a6200; --warn-soft:#fff3d6; --info:#2f5c9a; --info-soft:#e7eef9; --ok:#1f7a45; --ok-soft:#e3f4ea;
   --moodle-q:#e7f3f5;
+  --hl-err:#ffd0c9; --hl-warn:#ffe28f; --hl-info:#cfe0fb;
   --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
@@ -24,13 +24,14 @@
   --bg:#111819; --surface:#182224; --fg:#e4ecec; --muted:#9aabad; --line:#2b3a3c;
   --accent:#5cc0c4; --accent-soft:#173638;
   --err:#ff8a7d; --err-soft:#3a1d1a; --warn:#f2bf5e; --warn-soft:#352a12; --info:#8fb5ef; --info-soft:#1a2740; --ok:#6ed39a; --ok-soft:#163223;
-  --moodle-q:#1d3135; color-scheme:dark}}
+  --moodle-q:#1d3135; --hl-err:#5c2620; --hl-warn:#4f3d10; --hl-info:#22365a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111819; --surface:#182224; --fg:#e4ecec; --muted:#9aabad; --line:#2b3a3c;
   --accent:#5cc0c4; --accent-soft:#173638;
   --err:#ff8a7d; --err-soft:#3a1d1a; --warn:#f2bf5e; --warn-soft:#352a12; --info:#8fb5ef; --info-soft:#1a2740; --ok:#6ed39a; --ok-soft:#163223;
-  --moodle-q:#1d3135; color-scheme:dark}
+  --moodle-q:#1d3135; --hl-err:#5c2620; --hl-warn:#4f3d10; --hl-info:#22365a; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
 .wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:22px}
 h1{font-size:1.75rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
@@ -99,6 +100,7 @@ button{font:inherit;cursor:pointer}
 .diffline.w{background:var(--ok-soft)}.diffline.m{background:var(--err-soft)}
 .cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:860px){.cmp{grid-template-columns:1fr}}
+.cmp:has(> .pane:only-child){grid-template-columns:minmax(0,860px)}
 .pane{border:1px solid var(--line);border-radius:8px;min-width:0;display:flex;flex-direction:column}
 .pane h3{margin:0;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line)}
 .pane .inner{padding:12px;overflow-x:auto;font-size:14px}
@@ -137,7 +139,7 @@ button{font:inherit;cursor:pointer}
 .aitext input:focus-visible,.aitext textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .aiactions{display:flex;flex-direction:column;gap:8px;min-width:200px}.aistatus{font-size:.85rem;color:var(--muted);max-width:240px}
 .sit{display:inline-block;white-space:nowrap;border-radius:6px;padding:1px 8px;font-size:.78rem;font-weight:700;color:var(--surface)}
-.sit.fora{background:var(--err)}.sit.parcial{background:var(--warn)}.sit.estat{background:var(--info)}
+.sit.fora{background:var(--err)}.sit.trocado{background:var(--warn)}.sit.parcial{background:var(--warn)}.sit.estat{background:var(--info)}
 .dupalert.topic{border-color:var(--warn);background:var(--warn-soft)}
 .dupalert.topic h2{color:var(--warn)}.dupalert.topic .ico{background:var(--warn)}
 .dupalert.topic .dupkind{background:var(--warn)}.dupalert.topic .dupbtn{background:var(--warn)}
@@ -146,23 +148,60 @@ button{font:inherit;cursor:pointer}
 .fixtext{display:flex;flex-direction:column;gap:6px}.fixtext p{margin:0;color:var(--muted);font-size:.9rem;max-width:80ch}
 .fixtext label{font-size:.9rem;display:flex;gap:8px;align-items:flex-start}
 .howto ol{margin:6px 0 0;padding-left:1.2em}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 14px 9px;font-weight:600;display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:-1px;text-align:left}
+.tab small{font-weight:500;font-size:.78rem;color:var(--muted)}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--fg)}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.modepane{display:flex;flex-direction:column;gap:14px}
+.upload.one{grid-template-columns:1fr auto}
+@media (max-width:760px){.upload.one{grid-template-columns:1fr}}
+.copyrow{display:flex;gap:8px;flex-wrap:wrap}
+mark.hl{background:var(--hl-warn);color:inherit;border-radius:3px;padding:0 1px;box-shadow:inset 0 -2px 0 var(--warn);cursor:help}
+mark.hl.erro{background:var(--hl-err);box-shadow:inset 0 -2px 0 var(--err)}
+mark.hl.info{background:var(--hl-info);box-shadow:inset 0 -2px 0 var(--info)}
+.alts li.althl{border-radius:6px;padding:3px 6px;margin:0 -6px;background:var(--hl-warn);box-shadow:inset 3px 0 0 var(--warn)}
+.alts li.althl.erro{background:var(--hl-err);box-shadow:inset 3px 0 0 var(--err)}
+.alts li.althl.info{background:var(--hl-info);box-shadow:inset 3px 0 0 var(--info)}
+.flash{animation:flash 1.2s ease 2}
+@keyframes flash{50%{outline:3px solid var(--fg);outline-offset:2px}}
+.issue.has-mark{cursor:pointer}.issue.has-mark:hover .t{text-decoration:underline;text-underline-offset:3px}
+.issue .go{font-size:.75rem;color:var(--muted);margin-left:6px;font-weight:500}
+.legend{font-size:.8rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.legend mark{cursor:default}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Banco de questões · conferência pós-importação · <span id="versao">versão 09/10 11h30</span></div>
-    <h1>Curadoria Word × Moodle</h1>
-    <p class="lede">Compare o Word original com o XML exportado do Moodle depois da importação. A ferramenta confere texto, espaçamento, imagens, tabelas, alternativas, gabarito e formatação, questão por questão. Feedback e dificuldade ficam de fora, porque não são importados para o Moodle. Os arquivos são lidos só no seu navegador e não são enviados para nenhum servidor.</p>
+    <div class="eyebrow">Banco de questões · curadoria · <span id="versao">versão 09/10 14h10</span></div>
+    <h1>Curadoria de Questões</h1>
+    <p class="lede">Duas conferências na mesma ferramenta: a <b>curadoria revisão</b>, feita no Word antes da inserção, e a <b>comparação Word × Moodle</b>, feita depois da importação. Os arquivos são lidos só no seu navegador e não são enviados para nenhum servidor.</p>
   </header>
+  <nav class="tabs" role="tablist" aria-label="Tipo de curadoria">
+    <button class="tab" role="tab" id="tabCmp" aria-selected="true" aria-controls="paneCmp">Comparar Word × Moodle<small>equipe de inserção</small></button>
+    <button class="tab" role="tab" id="tabRev" aria-selected="false" aria-controls="paneRev">Curadoria revisão<small>só o Word · equipe de revisão</small></button>
+  </nav>
 
+  <div id="paneCmp" class="modepane" role="tabpanel" aria-labelledby="tabCmp">
+  <p class="lede" style="margin:0">Compare o Word original com o XML exportado do Moodle depois da importação. A ferramenta confere texto, espaçamento, imagens, tabelas, alternativas, gabarito e formatação, questão por questão. Feedback e dificuldade ficam de fora, porque não são importados para o Moodle.</p>
   <section class="upload" aria-label="Arquivos">
     <label class="drop" id="dropDocx"><span class="lbl">Word original (.docx)</span><span class="fn" id="fnDocx">Arraste aqui ou clique para escolher</span><input type="file" id="inDocx" accept=".docx"></label>
     <label class="drop" id="dropXml"><span class="lbl">Exportado do Moodle (.xml)</span><span class="fn" id="fnXml">Arraste aqui ou clique para escolher</span><input type="file" id="inXml" accept=".xml"></label>
     <button class="btn" id="run" disabled>Comparar</button>
   </section>
+  </div>
+
+  <div id="paneRev" class="modepane" role="tabpanel" aria-labelledby="tabRev" hidden>
+  <p class="lede" style="margin:0">Para a equipe de revisão de materiais: envie só o Word do banco de questões, antes de ele ir para a inserção. A ferramenta aponta erros de ortografia, normas ABNT, espaçamento, duplicidades, estrutura das questões e tema, e mostra só as questões que precisam de ajuste. Nada é alterado no arquivo.</p>
+  <section class="upload one" aria-label="Arquivo para revisão">
+    <label class="drop" id="dropRev"><span class="lbl">Word do banco de questões (.docx)</span><span class="fn" id="fnRev">Arraste aqui ou clique para escolher</span><input type="file" id="inRev" accept=".docx"></label>
+    <button class="btn" id="runRev" disabled>Revisar</button>
+  </section>
+  </div>
   <div class="status" id="status" role="status"></div>
-  <details class="howto"><summary>Como exportar o XML do Moodle</summary>
+  <details class="howto" id="howto"><summary>Como exportar o XML do Moodle</summary>
     <ol><li>Na disciplina, abra <b>Banco de questões → Exportar</b>.</li><li>Escolha o formato <b>Moodle XML</b>.</li><li>Selecione a categoria das questões importadas e clique em <b>Exportar questões para arquivo</b>.</li></ol>
     <p>Sem o Word, dá para enviar só o XML: a ferramenta faz as verificações que não dependem do original, como imagens faltando, espaçamento herdado do Word, tabelas com largura fixa e gabarito.</p>
   </details>
@@ -170,7 +209,7 @@ button{font:inherit;cursor:pointer}
   <section id="intro" class="notes">
     <h2>O que é verificado</h2>
     <ul>
-      <li><b>Tema:</b> questões que destoam do assunto da disciplina, por usarem um vocabulário muito diferente das demais questões do mesmo arquivo (por exemplo, questão de outro curso misturada no banco). Aparece num alerta em destaque e nunca é alterada; a partir de 8 questões. Além disso, a ferramenta identifica a <b>área da disciplina</b> pelo nome (e pela ementa, se informada) e a área de cada questão pelo texto, e aponta as questões de outra área ou só em parte ligadas (ex.: questões de Inteligência Artificial numa disciplina de Administração), tudo dentro da própria ferramenta.</li>
+      <li><b>Tema:</b> questões que destoam do assunto da disciplina, por usarem um vocabulário muito diferente das demais questões do mesmo arquivo (por exemplo, questão de outro curso misturada no banco). Aparece num alerta em destaque e nunca é alterada; a partir de 8 questões. Além disso, a ferramenta identifica a <b>área da disciplina</b> pelo nome e a área de cada questão pelo texto, e aponta as questões de outra área ou só em parte ligadas (ex.: questões de Inteligência Artificial numa disciplina de Administração), tudo dentro da própria ferramenta. Questões de formação geral (cidadania, ética, sustentabilidade, tecnologia e trabalho) são aceitas. Com o Word, também confere se o assunto do título de cada questão bate com o conteúdo.</li>
       <li><b>Texto:</b> enunciado igual ao do Word, sem trechos faltando ou sobrando, e caracteres especiais iguais aos do Word (símbolos, letras gregas, sobrescritos, fórmulas).</li>
       <li><b>Parágrafos:</b> parágrafos do Word que ficaram colados no Moodle, linhas em branco que sumiram ou sobraram e recuo da primeira linha que não chegou ao Moodle.</li>
       <li><b>Espaçamento:</b> espaço entre parágrafos igual ao do Word (nem menor, nem maior), parágrafos vazios e quebras de linha em excesso.</li>
@@ -181,6 +220,21 @@ button{font:inherit;cursor:pointer}
       <li><b>Alternativas:</b> quantidade, texto e gabarito iguais ao Word, mais de uma correta, alternativa vazia, alternativas duplicadas, triplicadas ou quase iguais (no Moodle e no próprio Word), que aparecem num alerta em destaque no topo e nunca são alteradas automaticamente, e letra digitada no texto.</li>
       <li><b>Formatação:</b> negrito, itálico (fora das referências), sobrescrito e subscrito, alinhamento (justificado) e entrelinha em relação ao Word.</li>
     </ul>
+  </section>
+  <section id="revIntro" class="notes" hidden>
+    <h2>O que é verificado na curadoria revisão</h2>
+    <ul>
+      <li><b>Ortografia:</b> palavras que não estão no dicionário de português do Brasil (LibreOffice/VERO), com sugestões de correção, e erros comuns como “concerteza”, “derrepente”, “apartir”, “excessão”. Nomes próprios, siglas, palavras em itálico (termos estrangeiros e nomes científicos) e referências ficam de fora. Palavras desconhecidas que aparecem em várias questões são tratadas como termos técnicos da disciplina.</li>
+      <li><b>Texto:</b> espaço duplo, espaço antes de vírgula ou ponto, falta de espaço depois da pontuação, palavra repetida (“de de”), frase começando com letra minúscula e parêntese aberto sem fechar.</li>
+      <li><b>ABNT:</b> referências (SOBRENOME em maiúsculas, ano, ponto final, “Disponível em” com “Acesso em”, alinhadas à esquerda e em espaço simples); texto justificado, entrelinha 1,5 e fonte 12, com a mesma fonte em todo o documento; figuras, gráficos, tabelas e quadros com título em cima (Figura 1 – …) e fonte embaixo (Fonte: …). O itálico das referências não é verificado.</li>
+      <li><b>Espaçamento:</b> duas ou mais linhas em branco seguidas, recuo feito com espaços ou tabulação e parágrafos que começam com espaço.</li>
+      <li><b>Duplicidades:</b> alternativas duplicadas, triplicadas ou quase iguais e questões repetidas ou quase iguais dentro do mesmo banco, num alerta em destaque.</li>
+      <li><b>Estrutura:</b> número de alternativas diferente do padrão do banco, nenhuma ou mais de uma alternativa correta, alternativa ou enunciado vazio, “todas/nenhuma das anteriores” (o Moodle embaralha as alternativas), letra digitada na alternativa, comando negativo (NÃO, EXCETO, INCORRETA) sem destaque, alternativa correta bem mais longa que as outras e numeração das questões pulada ou repetida.</li>
+      <li><b>Tema:</b> questões de assunto de outra área da disciplina ou que destoam das demais do banco (questões de formação geral, como cidadania, ética e sustentabilidade, são aceitas), e questões com o assunto do título trocado, quando o conteúdo é de outro assunto do banco, ex.: título “(Irrigação e Drenagem)” numa questão sobre pragas. Aparece num alerta em destaque, com o resultado da conferência sempre informado.</li>
+      <li><b>Imagens, tabelas e fórmulas:</b> imagem quebrada, imagem em formato que o Moodle não mostra (EMF/WMF), imagem e legenda fora do centro, tabela sem título ou fonte e equação antiga do Equation 3.0.</li>
+      <li><b>Formatação:</b> texto com cor ou realce (marcações de revisão esquecidas), alterações controladas não aceitas e comentários no documento.</li>
+    </ul>
+    <p class="sub" style="margin:0">Feedback e dificuldade não são verificados.</p>
   </section>
   <div id="banner" class="banner" hidden></div>
   <section id="fixbox" class="fixbox" hidden>
@@ -204,7 +258,7 @@ button{font:inherit;cursor:pointer}
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
         <label><input type="checkbox" id="onlyIssues" checked> Só questões com erro ou atenção</label>
         <button class="ghost" id="expandAll">Expandir tudo</button>
-        <button class="ghost" id="copy">Copiar relatório</button>
+        <button class="ghost" id="copy">Copiar relatório (tabela)</button>
       </div>
     </div>
     <div class="list" id="list" style="margin-top:10px"></div>
@@ -224,7 +278,7 @@ const ns=s=>decode(s||'').replace(/[\s ]+/g,'');
 const kids=(el,n)=>el?[...el.children].filter(c=>c.nodeName===n):[];
 const kid=(el,n)=>kids(el,n)[0];
 const textOf=el=>el?[...el.getElementsByTagName('w:t')].map(t=>t.textContent).join(''):'';
-const CATS=['Tema','Texto','Fórmulas','Marcadores','Parágrafos','Espaçamento','Imagens','Tabelas','Alternativas','Formatação'];
+const CATS=['Tema','Duplicidade','Ortografia','Texto','ABNT','Estrutura','Fórmulas','Marcadores','Parágrafos','Espaçamento','Imagens','Tabelas','Alternativas','Formatação'];
 const SEVLBL={erro:'Erro',atencao:'Atenção',info:'Info'};
 const SEVRANK={erro:3,atencao:2,info:1};
 
@@ -294,15 +348,22 @@ function styleProps(id,seen=new Set()){
   const st=STY.styles[id];if(!st||seen.has(id))return {};seen.add(id);
   return Object.assign({},st.basedOn?styleProps(st.basedOn,seen):{},st.props);
 }
+let THEME={minor:'',major:''};
+function themeFont(t){if(!t)return '';return /^major/i.test(t)?THEME.major:THEME.minor}
+function loadTheme(xml){THEME={minor:'',major:''};if(!xml)return;const d=new DOMParser().parseFromString(xml,'application/xml');
+  const g=n=>{const e=d.getElementsByTagName(n)[0];const l=e&&e.getElementsByTagName('a:latin')[0];return l?l.getAttribute('typeface'):''};THEME.minor=g('a:minorFont');THEME.major=g('a:majorFont')}
+function styleRun(id,seen=new Set()){const st=STY.styles[id];if(!st||seen.has(id))return {};seen.add(id);const b=st.basedOn?styleRun(st.basedOn,seen):{};return {font:st.font||b.font,pt:st.fontPt||b.pt}}
 function loadStyles(xml){
-  STY={defaults:{},styles:{},defaultId:null,fontPt:12};if(!xml)return;
+  STY={defaults:{},styles:{},defaultId:null,fontPt:12,font:''};if(!xml)return;
   const d=new DOMParser().parseFromString(xml,'application/xml');
   const dd=d.getElementsByTagName('w:pPrDefault')[0];if(dd)STY.defaults=pPrProps(kid(dd,'w:pPr'));
   const rd=d.getElementsByTagName('w:rPrDefault')[0];const sz=rd&&rd.getElementsByTagName('w:sz')[0];if(sz)STY.fontPt=+sz.getAttribute('w:val')/2;
+  const rfd=rd&&rd.getElementsByTagName('w:rFonts')[0];if(rfd)STY.font=rfd.getAttribute('w:ascii')||rfd.getAttribute('w:hAnsi')||themeFont(rfd.getAttribute('w:asciiTheme')||rfd.getAttribute('w:hAnsiTheme'));
   for(const st of d.getElementsByTagName('w:style')){
     const ty=st.getAttribute('w:type');if(ty!=='paragraph'&&ty!=='numbering')continue;const id=st.getAttribute('w:styleId');
     STY.styles[id]={basedOn:kid(st,'w:basedOn')?.getAttribute('w:val'),props:pPrProps(kid(st,'w:pPr'))};
     const ssz=kid(kid(st,'w:rPr'),'w:sz');if(ssz)STY.styles[id].fontPt=+ssz.getAttribute('w:val')/2;
+    const srf=kid(kid(st,'w:rPr'),'w:rFonts');if(srf)STY.styles[id].font=srf.getAttribute('w:ascii')||srf.getAttribute('w:hAnsi')||themeFont(srf.getAttribute('w:asciiTheme')||srf.getAttribute('w:hAnsiTheme'));
     if(ty==='paragraph'&&st.getAttribute('w:default')==='1')STY.defaultId=id;
   }
 }
@@ -377,7 +438,7 @@ function omml2tex(el){
   return cat(el);
 }
 function parsePara(p,depth){
-  let text='',html='',bold=[],ital=[],sup='';const imgs=[],maths=[];let ole=0;
+  let text='',html='',bold=[],ital=[],sup='';const imgs=[],maths=[];let ole=0;const runFonts={},runSizes={},colored=[],marked=[];
   let curB='',curI='';
   const flush=()=>{if(curB.trim())bold.push(curB.trim());if(curI.trim())ital.push(curI.trim());curB='';curI=''};
   // percorre o parágrafo na ordem: textos, símbolos e equações
@@ -393,9 +454,15 @@ function parsePara(p,depth){
       text+=o.t;html+=`<span data-math="${id}">${o.h}</span>`;continue}
     const rPr=kid(r,'w:rPr');const b=onOff(rPr,'w:b'),i=onOff(rPr,'w:i');
     const va=kid(rPr,'w:vertAlign')?.getAttribute('w:val');
+    // fonte, tamanho, cor e realce de cada trecho (para a curadoria revisão)
+    const rf=kid(rPr,'w:rFonts');const rFont=rf?(rf.getAttribute('w:ascii')||rf.getAttribute('w:hAnsi')||themeFont(rf.getAttribute('w:asciiTheme')||rf.getAttribute('w:hAnsiTheme'))):'';
+    const rSz=kid(rPr,'w:sz')?.getAttribute('w:val');const col=kid(rPr,'w:color')?.getAttribute('w:val');
+    const hl=kid(rPr,'w:highlight')?.getAttribute('w:val');const shd=kid(rPr,'w:shd')?.getAttribute('w:fill');
     for(const c of r.children){
       const n=c.nodeName;
       if(n==='w:t'){const t=c.textContent;text+=t;let s=esc(t);
+        const L=t.replace(/\s/g,'').length;if(L){runFonts[rFont]=(runFonts[rFont]||0)+L;const zk=rSz?String(+rSz/2):'';runSizes[zk]=(runSizes[zk]||0)+L;
+          if(col&&!/^(auto|000000)$/i.test(col)&&!colored.includes(t.trim()))colored.push(t.trim());if((hl&&hl!=='none')||(shd&&!/^(auto|FFFFFF)$/i.test(shd)))marked.push(t.trim())}
         if(va==='superscript'){s=`<sup>${s}</sup>`;sup+=t}else if(va==='subscript'){s=`<sub>${s}</sub>`;sup+=t}
         if(i)s=`<i>${s}</i>`;if(b)s=`<b>${s}</b>`;html+=s;
         if(b)curB+=t;else if(curB){bold.push(curB.trim());curB=''}
@@ -429,7 +496,11 @@ function parsePara(p,depth){
   let leftCm=(P.left||0)/567,list=null;
   if(P.numId!=null&&P.numId!=='0'&&(norm(text)||imgs.length)){const lm=listMarker(P.numId,P.ilvl||0);
     if(lm&&lm.mk){list=lm;const ownInd=pPrProps(pPr);leftCm=ownInd.left!=null?ownInd.left/567:lm.left;const hg=ownInd.hanging!=null?ownInd.hanging/567:lm.hang;indentCm=-hg}}
-  return {k:'p',t:text,html,imgs,maths,ole,list,bold,ital,sup,d:depth,jc,line,lineEm,beforeEm:tw2em(P.before),afterEm:tw2em(P.after),indentCm,leftCm,style:styleId,contextual:!!P.contextual,after:tw2em(P.after)};
+  // fonte e tamanho herdados do estilo quando o trecho não define
+  const fonts={},sizes={};const stF=styleRun(styleId);
+  for(const [f,n] of Object.entries(runFonts)){const k=f||stF.font||STY.font||'';fonts[k]=(fonts[k]||0)+n}
+  for(const [z,n] of Object.entries(runSizes)){const k=z||String(stF.pt||STY.fontPt||12);sizes[k]=(sizes[k]||0)+n}
+  return {k:'p',t:text,html,imgs,maths,ole,list,bold,ital,sup,d:depth,fonts,sizes,colored,marked,lineRaw:P.line,lineRule:P.lineRule,firstLineCm:(P.firstLine||0)/567,jc,line,lineEm,beforeEm:tw2em(P.before),afterEm:tw2em(P.after),indentCm,leftCm,style:styleId,contextual:!!P.contextual,after:tw2em(P.after)};
 }
 function parseTable(tbl,depth){
   const rows=[],grid=[];const open={};   // open[col] = célula que iniciou mesclagem vertical
@@ -478,12 +549,12 @@ function segmentWord(items){
     if(!cur||x.k==='endframe')continue;
     const up=t.toUpperCase().replace(/\s/g,'');
     if(x.k==='p'&&['ENUNCIADO','E','NUNCIA','DO'].includes(up)&&(mode===null||mode==='enun')&&!cur.enun.some(e=>e.k!=='p'||e.t.trim())){mode='enun';continue}
-    if(x.k==='p'&&(up==='CORRETA'||up==='INCORRETA')){cur.alts.push({ok:up==='CORRETA',t:'',html:''});mode='alt';continue}
+    if(x.k==='p'&&(up==='CORRETA'||up==='INCORRETA')){cur.alts.push({ok:up==='CORRETA',t:'',html:'',ps:[]});mode='alt';continue}
     if(x.k==='p'&&up==='FEEDBACK'){mode='fb';continue}
     if(x.k==='p'&&up==='DARESPOSTA'&&mode==='fb')continue;
     if(x.k==='p'&&up==='DIFICULDADE'){mode='dif';continue}
     if(mode==='enun'||mode===null)cur.enun.push(x);
-    else if(mode==='alt'){const a=cur.alts[cur.alts.length-1];if(t){a.t+=(a.t?' ':'')+t;a.html+=(a.html?'<br>':'')+x.html}}
+    else if(mode==='alt'){const a=cur.alts[cur.alts.length-1];if(t||(x.imgs&&x.imgs.length)){a.t+=(t&&a.t?' ':'')+t;a.html+=(a.html?'<br>':'')+x.html;a.ps.push(x)}}
     else if(mode==='fb'){if(t)cur.fb.push(t)}
     else if(mode==='dif')cur.dif.push(t);
   }
@@ -500,6 +571,7 @@ async function readDocx(file){
   const zip=await JSZip.loadAsync(file);
   const docXml=await zip.file('word/document.xml').async('string');
   const doc=new DOMParser().parseFromString(docXml,'application/xml');
+  try{loadTheme(await zip.file('word/theme/theme1.xml')?.async('string'))}catch{loadTheme(null)}
   try{loadStyles(await zip.file('word/styles.xml')?.async('string'))}catch{loadStyles(null)}
   try{loadNumbering(await zip.file('word/numbering.xml')?.async('string'))}catch{loadNumbering(null)}
   const relsF=zip.file('word/_rels/document.xml.rels');
@@ -516,7 +588,8 @@ async function readDocx(file){
   const qs=segmentWord(items);
   const jc=(docXml.match(/<w:jc w:val="both"/g)||[]).length,jcAll=(docXml.match(/<w:jc w:val=/g)||[]).length;
   const l360=(docXml.match(/w:line="360"/g)||[]).length,lAll=(docXml.match(/w:line="/g)||[]).length;
-  return {qs,media,justified:jcAll&&jc/jcAll>0.6,line15:lAll&&l360/lAll>0.6};
+  const track={ins:doc.getElementsByTagName('w:ins').length,del:doc.getElementsByTagName('w:del').length,comments:doc.getElementsByTagName('w:commentReference').length};
+  return {qs,items,media,track,justified:jcAll&&jc/jcAll>0.6,line15:lAll&&l360/lAll>0.6};
 }
 
 /* ---------------- Moodle XML ---------------- */
@@ -1205,6 +1278,7 @@ async function analyze(word,moodle){
     Q.moodleAlts=mAlts.map(a=>({ok:a.ok,html:sanitize(moodleHtmlWithFiles(a.html,a.files)),fb:a.fb}));
     Q.moodleGen=norm(m.gen.replace(/<[^>]+>/g,' '));
     if(w){Q.wordHtml=wordHtml(w,word.media);Q.wordAlts=w.alts.map(a=>({ok:a.ok,html:a.html||esc(a.t)}));Q.wordFb=w.fb}
+    if(w)Q.themeText=themeTextOf(w);
     Q.topicText=norm(decode(m.html.replace(/<[^>]+>/g,' ')))+' '+m.answers.map(a=>norm(decode(a.html.replace(/<[^>]+>/g,' ')))).join(' ');
     Q.issues.sort((a,b)=>SEVRANK[b.sev]-SEVRANK[a.sev]);
     report.questions.push(Q);
@@ -1234,7 +1308,7 @@ async function analyze(word,moodle){
   // (as duplicidades aparecem no alerta em destaque no topo do relatório)
   // questões que destoam do tema da disciplina (vocabulário muito diferente das demais)
   try{const off=topicOutliers(report.questions);
-    for(const o of off){const Q=o.q;Q.offTopic=o;Q.issues.unshift({sev:'atencao',cat:'Tema',title:'Questão possivelmente fora do tema da disciplina',detail:`Esta questão usa um vocabulário muito diferente das outras ${report.questions.length-1}. Termos desta questão: ${o.own.join(', ')}. Termos mais comuns na disciplina: ${o.disc.join(', ')}. Confira se ela pertence a esta disciplina. Nada foi alterado.`})}
+    for(const o of off){const Q=o.q;Q.offTopic=o;Q.issues.unshift({sev:'atencao',cat:'Tema',marks:o.own,title:'Questão possivelmente fora do tema da disciplina',detail:`Esta questão usa um vocabulário muito diferente das outras ${report.questions.length-1}. Termos desta questão: ${o.own.join(', ')}. Termos mais comuns na disciplina: ${o.disc.join(', ')}. Confira se ela pertence a esta disciplina. Nada foi alterado.`})}
     report.topicN=report.questions.length;
   }catch(e){console.error(e)}
   if(mlistQs.length){const byD={};mlistQs.forEach(x=>x.d.forEach(d=>(byD[d]=byD[d]||[]).push(x.q)));
@@ -1254,7 +1328,7 @@ function topicTokens(t){
 }
 const stemWord=st=>{const m=STEM_WORD[st];return m?Object.entries(m).sort((a,b)=>b[1]-a[1])[0][0]:st};
 function topicOutliers(qs){
-  const n=qs.length;if(n<8)return [];
+  const n=qs.length;if(n<4)return [];
   const docs=qs.map(q=>{const tf={};for(const w of topicTokens(q.topicText||''))tf[w]=(tf[w]||0)+1;return tf});
   const df={};docs.forEach(d=>Object.keys(d).forEach(w=>df[w]=(df[w]||0)+1));
   const idf=w=>Math.log((n+1)/(df[w]+0.5));
@@ -1265,13 +1339,14 @@ function topicOutliers(qs){
   const cen=[],nnb=[];
   vec.forEach((v,i)=>{const c={};let cn=0;for(const w in sum){const x=sum[w]-(v[w]||0);if(x>0){c[w]=x;cn+=x*x}}cn=Math.sqrt(cn)||1;let s2=0;for(const w in v)if(c[w])s2+=v[w]*c[w]/cn;cen.push(s2);
     let mx=0;vec.forEach((u,j)=>{if(j!==i){const x=cos(v,u);if(x>mx)mx=x}});nnb.push(mx)});
+  qs.forEach((q,i)=>{q.topicCen=cen[i];q.topicVec=vec[i]});
   const med=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]};
   const mc=med(cen),mad=med(cen.map(x=>Math.abs(x-mc)))*1.4826||0.01,mn=med(nnb);
   const top=Object.entries(df).filter(([w,c])=>c>=Math.max(3,n*0.15)).sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]);
   const out=[];
   vec.forEach((v,i)=>{
     const z=(cen[i]-mc)/mad;
-    if(z<-2.5&&cen[i]<mc*0.5&&nnb[i]<mn*0.6){
+    if(n>=8&&z<-2.5&&cen[i]<mc*0.5&&nnb[i]<mn*0.6){
       // termos que mais caracterizam a questão: frequentes nela e raros no resto da disciplina
       const own=Object.entries(docs[i]).sort((a,b)=>(b[1]*idf(b[0]))-(a[1]*idf(a[0]))).slice(0,6).map(x=>stemWord(x[0]));
       out.push({q:qs[i],score:cen[i],own,disc:top.map(stemWord)})}});
@@ -1307,12 +1382,332 @@ function wordHtml(w,media){
   return h;
 }
 
+/* ================= Curadoria revisão: só o Word, antes da inserção ================= */
+/* Verificador ortográfico leve no formato Hunspell (dicionário pt-BR do LibreOffice/VERO) */
+function makeSpeller(affText,dicText){
+  const sfx=new Map(),pfx=new Map(),hdr={};let forbid=null;
+  for(const line of affText.split('\n')){
+    const p=line.trim().split(/\s+/);
+    if(p[0]==='FORBIDDENWORD')forbid=p[1];
+    if(p[0]!=='SFX'&&p[0]!=='PFX')continue;
+    if(p.length===4&&/^[YN]$/.test(p[2])){hdr[p[0]+p[1]]=p[2]==='Y';continue}
+    if(p.length<5)continue;
+    const [kind,flag,strip0,add0,cond0]=p;const strip=strip0==='0'?'':strip0,add=(add0==='0'?'':add0).split('/')[0];
+    let cond=null;try{cond=cond0==='.'?null:new RegExp(kind==='SFX'?cond0+'$':'^'+cond0)}catch{continue}
+    const r={flag,strip,add,cond,cross:hdr[kind+flag]};const M=kind==='SFX'?sfx:pfx;
+    if(!M.has(add))M.set(add,[]);M.get(add).push(r);
+  }
+  const dic=new Map();const lines=dicText.split('\n');
+  for(let i=1;i<lines.length;i++){const l=lines[i];if(!l)continue;const k=l.indexOf('/');const w=k<0?l.trim():l.slice(0,k);const f=k<0?'':l.slice(k+1).trim();dic.set(w,(dic.get(w)||'')+f)}
+  const has=(w,fl)=>{const f=dic.get(w);return f!==undefined&&(fl==null||f.includes(fl))};
+  const sfxOk=(w,needPfxFlag)=>{for(let i=1;i<=w.length;i++){const rs=sfx.get(w.slice(i));if(!rs)continue;const base=w.slice(0,i);
+      for(const r of rs){const st=base+r.strip;if(r.cond&&!r.cond.test(st))continue;if(has(st,r.flag)&&(needPfxFlag==null||(r.cross&&has(st,needPfxFlag))))return true}}return false};
+  function check1(w){
+    if(dic.has(w))return !(forbid&&dic.get(w).includes(forbid));
+    if(sfxOk(w))return true;
+    for(let j=1;j<w.length;j++){const rs=pfx.get(w.slice(0,j));if(!rs)continue;const rest=w.slice(j);
+      for(const r of rs){const st=r.strip+rest;if(r.cond&&!r.cond.test(st))continue;if(has(st,r.flag))return true;if(r.cross&&sfxOk(st,r.flag))return true}}
+    return false;
+  }
+  const memo=new Map();
+  function check(w){
+    if(memo.has(w))return memo.get(w);
+    let ok=check1(w);const lo=w.toLowerCase();if(!ok&&lo!==w)ok=check1(lo);
+    if(!ok){const cap=lo.charAt(0).toUpperCase()+lo.slice(1);if(cap!==w)ok=check1(cap)}
+    if(!ok&&/[-‐]/.test(w))ok=w.split(/[-‐]/).every(x=>!x||x.length<3||check(x));
+    memo.set(w,ok);return ok;
+  }
+  const ALPHA='aáàâãbcçdeéêfghiíjklmnoóôõpqrstuúüvwxyz';
+  function suggest(w,max=3){const lo=w.toLowerCase();const out=new Set();const C=[];
+    for(let i=0;i<=lo.length;i++){
+      if(i<lo.length)C.push(lo.slice(0,i)+lo.slice(i+1));
+      if(i<lo.length-1)C.push(lo.slice(0,i)+lo[i+1]+lo[i]+lo.slice(i+2));
+      for(const c of ALPHA){if(i<lo.length)C.push(lo.slice(0,i)+c+lo.slice(i+1));C.push(lo.slice(0,i)+c+lo.slice(i))}}
+    for(const c of C){if(c&&c!==lo&&check1(c)){out.add(c);if(out.size>=max)break}}
+    return [...out];
+  }
+  return {check,suggest,size:dic.size};
+}
+const SPELL={sp:null,loading:null};
+const DIC_URLS=[['dic/pt-BR.aff','dic/pt-BR.dic'],['https://cdn.jsdelivr.net/npm/dictionary-pt@4.0.0/index.aff','https://cdn.jsdelivr.net/npm/dictionary-pt@4.0.0/index.dic']];
+function loadSpeller(){
+  if(SPELL.loading)return SPELL.loading;
+  SPELL.loading=(async()=>{
+    for(const [a,d] of DIC_URLS){try{const [ra,rd]=await Promise.all([fetch(a),fetch(d)]);if(!ra.ok||!rd.ok)continue;
+      const [ta,td]=await Promise.all([ra.text(),rd.text()]);if(td.length<100000||!/SFX/.test(ta))continue;SPELL.sp=makeSpeller(ta,td);return SPELL.sp}catch(e){}}
+    SPELL.loading=null;return null})();
+  return SPELL.loading;
+}
+// erros comuns, com a forma certa
+const COMMON_ERR={concerteza:'com certeza',derrepente:'de repente',apartir:'a partir',porisso:'por isso',excessão:'exceção',excessões:'exceções',excesão:'exceção',previlégio:'privilégio',previlégios:'privilégios',mendingo:'mendigo',beneficiente:'beneficente',cabeçário:'cabeçalho',impecilho:'empecilho',pobrema:'problema',poblema:'problema',propiedade:'propriedade',metereologia:'meteorologia',seje:'seja',esteje:'esteja',menas:'menos',paralizar:'paralisar',paralização:'paralisação',pesquiza:'pesquisa',pesquizar:'pesquisar',analizar:'analisar',analizou:'analisou',atravez:'através',ancioso:'ansioso',previnir:'prevenir',conciência:'consciência',exitar:'hesitar',enchergar:'enxergar',asterístico:'asterisco',entitulado:'intitulado',reinvindicação:'reivindicação',reinvindicar:'reivindicar',advinhar:'adivinhar',obseção:'obsessão',ascenção:'ascensão',pretencioso:'pretensioso',pretenção:'pretensão',extenção:'extensão',compreenção:'compreensão',concenso:'consenso',cincoenta:'cinquenta',quizer:'quiser',quizesse:'quisesse',impresindível:'imprescindível',excencial:'essencial',nescessário:'necessário',nescessária:'necessária',nescessidade:'necessidade',ezemplo:'exemplo',excessivel:'acessível',acessivel:'acessível',possivel:'possível',impossivel:'impossível',disponivel:'disponível',saude:'saúde',tambem:'também',porem:'porém',alem:'além',atraves:'através',voce:'você',numero:'número',analise:'',enfase:'ênfase',especifico:'específico',especifica:'',genero:'gênero',periodo:'período',agua:'água',familia:'família',ultimo:'último',unico:'único',publico:'',inicio:'',media:''};
+Object.keys(COMMON_ERR).forEach(k=>{if(!COMMON_ERR[k])delete COMMON_ERR[k]});
+const SPELL_OK=new Set('déficit déficits superávit superávits habitat hábitat campus status quórum ômicas ômica in vitro vivo situ libitum per capita apud versus'.split(' '));
+const ABBR=/^(p|v|n|ed|et|al|ex|etc|cf|fig|tab|op|cit|ibid|org|orgs|coord|trad|vol|cap|art|inc|dr|dra|sr|sra|prof|profa|aprox|min|max|obs|séc|nº|núm|pág|págs|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|s|d|l|sp|spp|var|cv|subsp|ltda|cia)$/i;
+const CAPTION_RE=/^(Figura|Fig\.|Gr[áa]fico|Imagem|Tabela|Quadro|Esquema|Mapa|Fotografia|Ilustra[çc][ãa]o|Diagrama|Fluxograma|Infogr[áa]fico)\s*\d*\s*[–—\-:.]?/i;
+const FONTE_RE=/^Fonte\s*:/i;
+const lst2=a=>a.length<=1?a.join(''):a.slice(0,-1).join(', ')+' e '+a[a.length-1];
+const mode=o=>{const c={};for(const [k,v] of Object.entries(o))c[k]=(c[k]||0)+v;return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]};
+
+function reviewWord(word,sp){
+  const report={questions:[],global:[],word:true,mode:'rev',generated:new Date().toISOString()};
+  const qs=word.qs;const media=word.media;
+  // ----- padrões do documento inteiro
+  const allP=qs.flatMap(w=>[...w.enun.filter(e=>e.k==='p'),...w.alts.flatMap(a=>a.ps||[])]);
+  const fontTot={},sizeTot={};
+  for(const p of allP){for(const [f,n] of Object.entries(p.fonts||{}))fontTot[f||'(padrão)']=(fontTot[f||'(padrão)']||0)+n;for(const [z,n] of Object.entries(p.sizes||{}))sizeTot[z]=(sizeTot[z]||0)+n}
+  const mainFont=mode(fontTot)||'',mainSize=mode(sizeTot)||'12';
+  const nAlts={};qs.forEach(w=>{if(w.alts.length)nAlts[w.alts.length]=(nAlts[w.alts.length]||0)+1});
+  const stdAlts=+(Object.entries(nAlts).sort((a,b)=>b[1]-a[1])[0]?.[0]||5);
+  // palavras não reconhecidas: em quantas questões aparecem (as que aparecem em várias são termos técnicos)
+  const unk=new Map();
+  const spellOf=new Map();   // questão -> [{w,sug,common}]
+  const wordRe=/[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[-‐][A-Za-zÀ-ÖØ-öø-ÿ]+)*/g;
+  function spellPara(qn,t,italTxt,isRef){
+    if(!sp&&!Object.keys(COMMON_ERR).length)return;
+    if(isRef)return;
+    t=t.replace(/https?:\/\/\S+|www\.\S+|\S+@\S+\.\S+|\bdoi:\S+/gi,' ');
+    const ital=new Set((italTxt.match(wordRe)||[]).map(x=>x.toLowerCase()));
+    let m;wordRe.lastIndex=0;
+    while((m=wordRe.exec(t))){
+      const w=m[0];const lo=w.toLowerCase();
+      if(COMMON_ERR[lo]){(spellOf.get(qn)||spellOf.set(qn,[]).get(qn)).push({w,sug:[COMMON_ERR[lo]],common:true});continue}
+      if(!sp||w.length<3||ital.has(lo)||SPELL_OK.has(lo))continue;
+      if(/[A-ZÀ-Ý]/.test(w.slice(1)))continue;            // siglas e palavras em maiúsculas (DNA, pH, mmHg)
+      const prev=t.slice(Math.max(0,m.index-3),m.index);
+      if(/[0-9]$/.test(prev.trim())||/[\d]/.test(t[m.index+w.length]||''))continue;   // unidades coladas em números
+      if(sp.check(w))continue;
+      const capital=/^[A-ZÀ-Ý]/.test(w);
+      if(capital){   // nome próprio provável: só aponta no início de frase e se houver sugestão
+        const start=m.index===0||/[.!?:]\s*$/.test(t.slice(0,m.index));if(!start)continue}
+      const k=lo;if(!unk.has(k))unk.set(k,{qs:new Set(),w});unk.get(k).qs.add(qn);
+      (spellOf.get(qn)||spellOf.set(qn,[]).get(qn)).push({w,capital,k});
+    }
+  }
+  const dupQs=new Set();
+  for(const w of qs){
+    const name=`Questão ${String(w.n).padStart(2,'0')}`;
+    const Q={n:w.n,name,area:w.area||'',tipo:w.tipo||'',issues:[]};
+    const add=(sev,cat,title,detail='',key)=>Q.issues.push({sev,cat,title,detail,key});
+    const enun=w.enun,paras=enun.filter(e=>e.k==='p');
+    const refs=refFlags(paras);const isRef=new Map(paras.map((p,i)=>[p,refs[i]]));
+    const stemTxt=norm(enun.map(e=>e.k==='p'?e.t:e.rows.flat().join(' ')).join(' '));
+    // ----- Estrutura
+    const discursiva=/discurs|dissert|aberta/i.test(w.tipo);
+    if(!stemTxt&&!enun.some(e=>e.imgs&&e.imgs.length))add('erro','Estrutura','Enunciado vazio','A questão não tem texto nem imagem no enunciado.');
+    if(!discursiva){
+      if(!w.alts.length)add('erro','Estrutura','Questão sem alternativas','Não foram encontradas as linhas CORRETA/Incorreta no quadro da questão.');
+      else{
+        if(w.alts.length!==stdAlts)add('erro','Estrutura',`${w.alts.length} alternativas (o padrão do banco é ${stdAlts})`,'Confira se falta ou sobra alguma alternativa.');
+        const nOk=w.alts.filter(a=>a.ok).length;
+        if(nOk===0)add('erro','Estrutura','Nenhuma alternativa marcada como CORRETA','Marque a alternativa correta no quadro da questão.');
+        else if(nOk>1)add('erro','Estrutura',`${nOk} alternativas marcadas como CORRETA`,'Em questão de múltipla escolha deve haver só uma correta.');
+        w.alts.forEach((a,i)=>{const L='abcdefgh'[i];
+          if(!norm(a.t)&&!/data-rid/.test(a.html))add('erro','Estrutura',`Alternativa ${L} vazia`);
+          if(/^\s*\(?[a-eA-E]\s*[\)\.\-–]\s/.test(a.t))add('atencao','Estrutura',`Letra digitada no início da alternativa ${L}`,`O Moodle já coloca a letra e embaralha as alternativas. Retire “${a.t.trim().slice(0,3)}”.`);
+          if(/\b(todas|nenhuma)\s+(as|das)\s+(alternativas\s+|afirmativas\s+|op[çc][õo]es\s+)?(anteriores|acima)\b|\btodas\s+as\s+(alternativas|afirmativas)\s+(est[ãa]o\s+)?(corretas|incorretas)\b/i.test(a.t))
+            add('atencao','Estrutura',`Alternativa ${L}: “${short(norm(a.t),50)}”`,'O Moodle embaralha as alternativas, então “anteriores” e “acima” perdem o sentido. Reescreva sem depender da ordem.')});
+        const lens=w.alts.map(a=>norm(a.t).length),ci=w.alts.findIndex(a=>a.ok);
+        if(ci>=0&&w.alts.length>=3){const others=lens.filter((_,i)=>i!==ci);const avg=others.reduce((x,y)=>x+y,0)/others.length;
+          if(lens[ci]>40&&lens[ci]>avg*1.7&&lens[ci]>Math.max(...others)*1.3)add('info','Estrutura','Alternativa correta bem mais longa que as outras',`A correta tem ${lens[ci]} caracteres; as outras, em média, ${Math.round(avg)}. Isso pode entregar a resposta.`)}
+      }
+    }
+    // comando negativo sem destaque (na última frase de comando do enunciado)
+    {const cmd=[...paras].reverse().find(p=>norm(p.t)&&!isRef.get(p));
+     if(cmd){const t=cmd.t;const re=/\b(exceto|incorret[ao]s?|falsas?|errad[ao]s?)\b|\bn[ãa]o\s+(?=(é|está|estão|são|corresponde|correspondem|apresenta|representa|se\s+aplica|pode|deve|constitui|caracteriza|inclui|faz\s+parte)\b)/gi;let m;
+       while((m=re.exec(t))){const word=m[0].trim();const up=word===word.toUpperCase();const inBold=cmd.bold.some(b=>b.toLowerCase().includes(word.toLowerCase()));
+         if(!up&&!inBold){add('atencao','Estrutura',`Comando negativo sem destaque: “${word}”`,'Destaque a palavra em NEGRITO ou MAIÚSCULAS para o aluno não ler o comando ao contrário.');break}}}}
+    // ----- Duplicidade nas alternativas
+    if(w.alts.length>1)dupCheck(w.alts.map(a=>a.t),'Word').forEach(d=>{dupQs.add(name);(Q.dups=Q.dups||[]).push({...d,where:'Word'});add(d.sev,'Duplicidade',d.title,d.detail.replace('Não foi alterado automaticamente: encaminhe para correção.','Corrija antes de enviar para a inserção.'))});
+    // ----- Ortografia (enunciado, tabelas e alternativas)
+    for(const e of enun){if(e.k==='p')spellPara(name,e.t,e.ital.join(' '),isRef.get(e));else if(e.k==='table')spellPara(name,e.rows.flat().join(' · '),'',false)}
+    w.alts.forEach(a=>(a.ps||[]).forEach(p=>spellPara(name,p.t,p.ital.join(' '),false)));
+    // ----- Texto
+    const txtProbs=[];
+    const allTxt=[...paras.filter(p=>!isRef.get(p)).map(p=>p.t),...w.alts.map(a=>a.t)];
+    for(const t0 of allTxt){const t=t0.replace(/https?:\/\/\S+|www\.\S+|\S+@\S+/gi,' ').replace(/\n/g,' ');
+      const sn=x=>short(x.trim(),60);let m;
+      if((m=t.match(/\S {2,}\S/)))txtProbs.push(['Espaço duplo',`“${sn(t.slice(Math.max(0,m.index-25),m.index+28))}”`]);
+      if((m=t.match(/[A-Za-zÀ-ÿ0-9)] +[,;.:!?](?=\s|$)/)))txtProbs.push(['Espaço antes da pontuação',`“${sn(t.slice(Math.max(0,m.index-25),m.index+8))}”`]);
+      if((m=t.match(/[a-zà-ÿ]{2,}[,;][A-Za-zÀ-ÿ]|[a-zà-ÿ]{3,}[.!?][A-ZÀ-Ý][a-zà-ÿ]/)))txtProbs.push(['Falta espaço depois da pontuação',`“${sn(t.slice(Math.max(0,m.index-20),m.index+20))}”`]);
+      const rep=t.match(/(^|[^A-Za-zÀ-ÿ])([A-Za-zÀ-ÿ]{2,})\s+\2(?![A-Za-zÀ-ÿ])/i);if(rep&&!/^(ha|he|hi|ra|cha|ti|tchau|bye|blá|bla)$/i.test(rep[2]))txtProbs.push(['Palavra repetida',`“${rep[2]} ${rep[2]}”`]);
+      const re2=/([A-Za-zÀ-ÿ]{2,})[.!?]\s+([a-zà-ÿ]{2,})/g;let r2;while((r2=re2.exec(t))){if(ABBR.test(r2[1])||/^(e|ou|de|do|da|que)$/.test(r2[2])&&false)continue;if(r2[1].length<4)continue;txtProbs.push(['Frase começando com letra minúscula',`“${sn(t.slice(Math.max(0,r2.index),r2.index+r2[0].length+10))}”`]);break}
+    }
+    {const all=allTxt.join(' ');const op=(all.match(/\(/g)||[]).length,cl=(all.match(/\)/g)||[]).length;if(op>cl)txtProbs.push(['Parêntese aberto sem fechar',`${op} “(” e ${cl} “)”.`]);
+     const q2=(all.match(/"/g)||[]).length,qo=(all.match(/“/g)||[]).length,qc=(all.match(/”/g)||[]).length;if(q2%2||qo!==qc)txtProbs.push(['Aspas sem fechar','Confira se todas as aspas abertas foram fechadas.'])}
+    if(txtProbs.length){const by={};txtProbs.forEach(([k,v])=>(by[k]=by[k]||[]).push(v));
+      for(const [k,v] of Object.entries(by))add('atencao','Texto',`${k}${v.length>1?` (${v.length})`:''}`,v.slice(0,3).join(' · '))}
+    // ----- Espaçamento
+    {let run=0,maxRun=0;for(const e of enun){if(e.k==='p'&&!norm(e.t)&&!e.imgs.length){run++;maxRun=Math.max(maxRun,run)}else run=0}
+     if(maxRun>=2)add('atencao','Espaçamento',`${maxRun} linhas em branco seguidas`,'Deixe no máximo uma linha em branco entre os blocos, ou use o espaçamento do parágrafo.');
+     const sp2=paras.filter(p=>/^[  ]{2,}\S/.test(p.t));if(sp2.length)add('atencao','Espaçamento','Recuo feito com espaços ou tabulação',`Use o recuo de primeira linha do parágrafo (1,25 cm). Ex.: “${short(norm(sp2[0].t),50)}”`);
+     const sp1=paras.filter(p=>/^[  ]\S/.test(p.t));if(sp1.length)add('info','Espaçamento','Parágrafo começando com espaço',`“${short(norm(sp1[0].t),50)}”`)}
+    // ----- ABNT: corpo do texto
+    const body=paras.filter(p=>!isRef.get(p)&&!p.list&&norm(p.t).length>=60&&!CAPTION_RE.test(norm(p.t))&&!FONTE_RE.test(norm(p.t))&&(p.leftCm||0)<3);
+    if(body.length){
+      const notJ=body.filter(p=>p.jc!=='both');if(notJ.length)add('atencao','ABNT',`Texto não justificado (${notJ.length} parágrafo${notJ.length>1?'s':''})`,`Ex.: “${short(norm(notJ[0].t),60)}”`,'just');
+      const lm=p=>p.lineRaw==null?1:(p.lineRule==='auto'||!p.lineRule)?p.lineRaw/240:null;
+      const not15=body.filter(p=>{const x=lm(p);return x!=null&&Math.abs(x-1.5)>0.06});
+      if(not15.length){const v=lm(not15[0]);add('atencao','ABNT',`Entrelinha ${String(+v.toFixed(2)).replace('.',',')} (ABNT: 1,5)`,`${not15.length} parágrafo${not15.length>1?'s':''} do texto. Ex.: “${short(norm(not15[0].t),60)}”`,'line')}
+      const bad=body.filter(p=>{const z=mode(p.sizes||{});return z&&z!=='12'});
+      if(bad.length)add('atencao','ABNT',`Fonte tamanho ${mode(bad[0].sizes).replace('.',',')} no texto (ABNT: 12)`,`${bad.length} parágrafo${bad.length>1?'s':''}. Ex.: “${short(norm(bad[0].t),60)}”`,'size');
+    }
+    // fonte diferente da usada no resto do documento
+    {const fam=f=>(f||'(padrão)').toLowerCase().replace(/\s+(unicode ms|narrow|black|mt|light|bold)\b.*$/,'').trim();
+     const diff=f=>fam(f)!==fam(mainFont)&&!/symbol|wingdings|webdings|cambria math|math/i.test(f||'');
+     const odd=[...paras,...w.alts.flatMap(a=>a.ps||[])].filter(p=>Object.entries(p.fonts||{}).some(([f,n])=>diff(f)&&n>=8));
+     if(odd.length){const f=Object.entries(odd[0].fonts).filter(([f])=>diff(f)).sort((a,b)=>b[1]-a[1])[0][0]||'padrão';add('atencao','ABNT',`Trecho em outra fonte (${f})`,`O documento usa ${mainFont}. ${odd.length} parágrafo${odd.length>1?'s':''} com fonte diferente. Ex.: “${short(norm(odd[0].t),60)}”`,'font')}}
+    // ----- ABNT: referências
+    {const rp=[];paras.forEach((p,i)=>{const t=norm(p.t);if(!refs[i]||!t||REF_HEAD.test(t)&&t.length<40||FONTE_RE.test(t))return;if(!looksCitation(t)&&!/\b(1[5-9]\d\d|20\d\d)\b/.test(t))return;rp.push(p)});
+     for(const p of rp){const t=norm(p.t);const probs=[];
+       if(/^[A-ZÀ-Ý][a-zà-ÿ]+,\s/.test(t))probs.push('sobrenome do autor em MAIÚSCULAS');
+       if(!/\b(1[5-9]\d\d|20\d\d)\b|\[?s\.\s?d\.\]?/i.test(t))probs.push('ano de publicação');
+       if(/Dispon[íi]vel em/i.test(t)&&!/Acesso em/i.test(t))probs.push('“Acesso em:” depois do “Disponível em:”');
+       if(!/[.]\s*$/.test(t))probs.push('ponto final');
+       if(probs.length)add('atencao','ABNT',`Referência fora da ABNT: falta ${lst2(probs)}`,`“${short(t,110)}”`);
+       if(p.jc==='both'||p.jc==='center')Q.issues.push({sev:'atencao',cat:'ABNT',title:'Referência justificada ou centralizada (ABNT: alinhada à esquerda)',detail:`“${short(t,80)}”`,key:'refAlign'});
+       const x=p.lineRaw==null?1:p.lineRaw/240;if((p.lineRule==='auto'||!p.lineRule)&&x>1.1)Q.issues.push({sev:'atencao',cat:'ABNT',title:'Referência com entrelinha maior que simples (ABNT: simples)',detail:`“${short(t,80)}”`,key:'refLine'})}}
+    // ----- Imagens, tabelas e fórmulas: título em cima, fonte embaixo, centralizadas
+    {const nonEmpty=enun.filter(e=>e.k==='table'||norm(e.t)||(e.imgs&&e.imgs.length));
+     const figs=[];
+     nonEmpty.forEach((e,i)=>{
+       const isImg=e.k==='p'&&e.imgs.length&&!norm(e.t);const isTab=e.k==='table';if(!isImg&&!isTab)return;
+       const prev=nonEmpty.slice(Math.max(0,i-2),i).map(x=>x.k==='p'?norm(x.t):'');const next=nonEmpty.slice(i+1,i+3).map(x=>x.k==='p'?norm(x.t):'');
+       const cap=prev.some(t=>CAPTION_RE.test(t));const fon=next.some(t=>FONTE_RE.test(t));
+       const what=isImg?'Imagem':'Tabela';
+       if(isTab&&e.rows.length<=1)return;   // tabela de uma linha costuma ser só moldura
+       if(!cap||!fon)figs.push(`${what} ${figs.length+1}: ${[!cap?'sem título em cima (ex.: “'+(isImg?'Figura':'Tabela')+' 1 – …”)':'',!fon?'sem fonte embaixo (“Fonte: …”)':''].filter(Boolean).join(' e ')}`);
+       if(isImg&&e.jc!=='center')add('atencao','Imagens','Imagem fora do centro','Centralize a imagem, junto com o título e a fonte.','imgCenter');
+       if(isImg)for(const x of [...nonEmpty.slice(Math.max(0,i-1),i),...nonEmpty.slice(i+1,i+2)])if(x.k==='p'&&(CAPTION_RE.test(norm(x.t))||FONTE_RE.test(norm(x.t)))&&x.jc!=='center'){add('atencao','Imagens','Título ou fonte da imagem fora do centro',`“${short(norm(x.t),60)}”`,'capCenter');break}
+     });
+     if(figs.length)add('atencao','ABNT',`Ilustração ou tabela sem título ou fonte (${figs.length})`,figs.slice(0,3).join(' · ')+'.','figcap');
+     for(const e of [...paras,...w.alts.flatMap(a=>a.ps||[])])for(const im of e.imgs||[]){const m=media[im.rid];
+       if(!m)add('erro','Imagens','Imagem quebrada ou vinculada a arquivo externo','A imagem não está dentro do Word. Insira a imagem de novo (Inserir → Imagens → Este dispositivo).');
+       else if(/\.(emf|wmf)$/i.test(m.name))add('erro','Imagens','Imagem em formato EMF/WMF','Esse formato não aparece no Moodle. Salve a imagem como PNG ou JPG e insira de novo.')}
+     const ole=[...paras,...w.alts.flatMap(a=>a.ps||[])].reduce((t,p)=>t+(p.ole||0),0);
+     if(ole)add('atencao','Fórmulas',`${ole} objeto${ole>1?'s':''} antigo${ole>1?'s':''} (Equation 3.0 ou objeto incorporado)`,'Refaça a equação no editor de equações do Word (Inserir → Equação) para ela chegar certa ao Moodle.')}
+    // ----- Formatação: cor, realce
+    {const ps=[...paras,...w.alts.flatMap(a=>a.ps||[])];const col=ps.flatMap(p=>p.colored||[]).filter(Boolean),hl=ps.flatMap(p=>p.marked||[]).filter(Boolean);
+     if(col.length)add('atencao','Formatação','Texto colorido',`Pode ser marcação de revisão esquecida. Ex.: “${short(col[0],60)}”`);
+     if(hl.length)add('atencao','Formatação','Texto com realce (marca-texto)',`Retire o realce antes da inserção. Ex.: “${short(hl[0],60)}”`)}
+    Q.wordHtml=wordHtml(w,media);
+    Q.wordAlts=w.alts.map(a=>({ok:a.ok,html:(a.html||esc(a.t)).replace(/data-rid="([^"]+)"/g,(_,rid)=>media[rid]?`src="data:${media[rid].mime};base64,${media[rid].b64}"`:'')}));
+    Q.topicText=stemTxt+' '+w.alts.map(a=>norm(a.t)).join(' ');
+    Q.themeText=themeTextOf(w);
+    Q._stem=stemTxt;Q._alts=w.alts.map(a=>norm(a.t)).join(' | ');
+    report.questions.push(Q);
+  }
+  const N=report.questions.length;
+  // ----- ortografia: termos técnicos (aparecem em 3 ou mais questões) viram nota geral
+  const allUnknown=[];
+  const docWords=new Set();for(const w of qs)for(const t of [...w.enun.map(e=>e.k==='p'?e.t:e.rows.flat().join(' ')),...w.alts.map(a=>a.t)])for(const x of (t.toLowerCase().match(/[a-zà-ÿ]{3,}/g)||[]))docWords.add(x);
+  const tech=[...unk.values()].filter(u=>u.qs.size>=3);const techSet=new Set(tech.map(u=>u.w.toLowerCase()));
+  for(const Q of report.questions){const L=spellOf.get(Q.name);if(!L)continue;
+    const seen=new Set(),err=[],unknown=[];
+    for(const x of L){const k=x.w.toLowerCase();if(seen.has(k))continue;seen.add(k);
+      if(x.common){err.push(`“${x.w}” → ${x.sug[0]}`);continue}
+      if(techSet.has(k))continue;
+      if(SPELL_OK.has(k))continue;
+      const sug=sp?sp.suggest(x.w):[];
+      if(x.capital&&!sug.length)continue;
+      // erro provável: só falta/sobra acento ou cedilha, ou a sugestão é uma palavra usada no próprio documento
+      const strong=sug.find(g=>fold(g)===fold(k)&&k.length<=12)||sug.find(g=>docWords.has(g)&&fold(g).slice(0,-2)!==fold(k).slice(0,-2));
+      if(strong)err.push(`“${x.w}” → ${strong}`);
+      else{unknown.push(`“${x.w}”`+(sug.length?` (${sug.join(', ')}?)`:''));allUnknown.push([x.w,Q.name.replace('Questão ','Q')])}}
+    if(err.length)Q.issues.push({sev:'atencao',cat:'Ortografia',title:`Possível erro de ortografia (${err.length})`,detail:err.slice(0,8).join(' · ')+(err.length>8?' …':'')});
+    if(unknown.length)Q.issues.push({sev:'info',cat:'Ortografia',title:`Conferir grafia: palavra${unknown.length>1?'s':''} fora do dicionário (${unknown.length})`,detail:unknown.slice(0,8).join(', ')+'. Podem ser termos técnicos ou nomes próprios.'})}
+  if(allUnknown.length)report.global.push(['info',`Palavras fora do dicionário para conferir a grafia (provavelmente termos técnicos): ${allUnknown.slice(0,40).map(([w,q])=>`${w} (${q})`).join(', ')}${allUnknown.length>40?' …':''}. Clique em “Ortografia” para ver as questões.`]);
+  if(!sp)report.global.push(['info','O dicionário de português não pôde ser carregado (sem internet ou bloqueado). A ortografia foi conferida só com a lista de erros comuns.']);
+  else if(tech.length)report.global.push(['info',`Palavras fora do dicionário que aparecem em 3 ou mais questões foram tratadas como termos técnicos da disciplina: ${tech.slice(0,20).map(u=>u.w).join(', ')}${tech.length>20?' …':''}. Se alguma estiver escrita errada, corrija em todas as questões.`]);
+  // ----- questões repetidas ou quase iguais no mesmo banco
+  const R=report.questions;
+  for(let i=0;i<R.length;i++)for(let j=i+1;j<R.length;j++){
+    const a=R[i],b=R[j];if(a._stem.length<40||b._stem.length<40)continue;
+    const same=ns(a._stem.toLowerCase())===ns(b._stem.toLowerCase());
+    const near=!same&&Math.min(a._stem.length,b._stem.length)>80&&similar(a._stem.toLowerCase(),b._stem.toLowerCase())>=0.9&&(similar(a._alts,b._alts)>=0.8||bagSim(a._alts,b._alts)>=0.9);
+    if(!same&&!near)continue;
+    const kind=same?'questão repetida':'questão quase igual';
+    for(const [x,y] of [[a,b],[b,a]]){(x.dups=x.dups||[]).push({kind,letters:[],other:y.name,where:'Word',text:short(x._stem,160),title:`${same?'Enunciado igual':'Enunciado quase igual'} ao da ${y.name}`});
+      x.issues.unshift({sev:'erro',cat:'Duplicidade',title:`${same?'Questão repetida':'Questão quase igual'}: ${same?'enunciado igual':'enunciado quase igual'} ao da ${y.name}`,detail:`Confira se uma delas deve ser trocada. “${short(x._stem,100)}”`});dupQs.add(x.name)}
+  }
+  // ----- numeração das questões
+  {const ns_=qs.map(w=>w.n);const rep=ns_.filter((n,i)=>ns_.indexOf(n)!==i);const mx=Math.max(...ns_),mn=Math.min(...ns_);const miss=[];for(let k=mn;k<=mx;k++)if(!ns_.includes(k))miss.push(k);
+   if(rep.length)report.global.push(['erro',`Numeração repetida: ${[...new Set(rep)].map(n=>'Questão '+String(n).padStart(2,'0')).join(', ')} aparece${rep.length>1?'m':''} mais de uma vez.`]);
+   if(miss.length)report.global.push(['erro',`Numeração pulada: falta${miss.length>1?'m':''} a${miss.length>1?'s':''} ${miss.map(n=>'Questão '+String(n).padStart(2,'0')).join(', ')}.`])}
+  // ----- padrões do documento inteiro: um aviso geral em vez de repetir em todas as questões
+  const KEYS={just:'O texto das questões não está justificado na maior parte do documento (ABNT/padrão institucional: justificado).',
+    line:'A entrelinha do texto não é 1,5 na maior parte do documento (ABNT: 1,5; referências, citações longas e legendas em espaço simples).',
+    size:'O tamanho da fonte do texto não é 12 na maior parte do documento (ABNT: 12; citações longas, legendas e fontes podem ser menores).',
+    font:'Há várias fontes diferentes no documento.',
+    refAlign:'As referências estão justificadas ou centralizadas na maior parte do documento (ABNT: alinhadas à esquerda).',
+    refLine:'As referências estão com entrelinha maior que simples na maior parte do documento (ABNT: simples).',
+    figcap:'Na maior parte das questões, as imagens e tabelas não têm título em cima (Figura 1 – …) e fonte embaixo (Fonte: …), como pede a ABNT.',
+    imgCenter:'As imagens não estão centralizadas na maior parte do documento.',
+    capCenter:'Os títulos e fontes das imagens não estão centralizados na maior parte do documento.'};
+  for(const [k,txt] of Object.entries(KEYS)){
+    const withK=R.filter(q=>q.issues.some(i=>i.key===k));const base=k==='figcap'||k==='imgCenter'||k==='capCenter'?R.filter(q=>q.wordHtml.includes('<img')||q.wordHtml.includes('<table')).length:N;
+    if(withK.length>=4&&withK.length>base*0.5){report.global.push(['atencao',txt+` (${withK.length} questões; ajuste no documento todo.)`]);withK.forEach(q=>{q.issues=q.issues.filter(i=>i.key!==k)})}
+  }
+  if(mainFont&&mainFont!=='(padrão)'&&!/^(arial|times new roman)$/i.test(mainFont))report.global.push(['atencao',`A fonte principal do documento é ${mainFont}. A ABNT recomenda Arial ou Times New Roman, tamanho 12.`]);
+  if(word.track&&(word.track.ins||word.track.del))report.global.push(['erro',`O Word tem alterações controladas não aceitas (${word.track.ins} inclusões e ${word.track.del} exclusões). Aceite ou rejeite todas (Revisão → Aceitar) antes de enviar para a inserção.`]);
+  if(word.track&&word.track.comments)report.global.push(['atencao',`O Word tem ${word.track.comments} comentário${word.track.comments>1?'s':''}. Resolva e exclua os comentários antes de enviar para a inserção.`]);
+  if(dupQs.size)report.global.push(['erro',`Duplicidades em ${dupQs.size} questão(ões): ${[...dupQs].join(', ')}. Veja o alerta no topo.`]);
+  // ----- tema
+  try{const off=topicOutliers(R);for(const o of off){const Q=o.q;Q.offTopic=o;Q.issues.unshift({sev:'atencao',cat:'Tema',marks:o.own,title:'Questão possivelmente fora do tema da disciplina',detail:`Esta questão usa um vocabulário muito diferente das outras ${N-1}. Termos desta questão: ${o.own.join(', ')}. Termos mais comuns no banco: ${o.disc.join(', ')}. Confira se ela pertence a esta disciplina.`})}}catch(e){console.error(e)}
+  R.forEach(q=>{q.issues.sort((a,b)=>SEVRANK[b.sev]-SEVRANK[a.sev]);delete q._alts});
+  report.questions.sort((a,b)=>a.n-b.n);
+  return report;
+}
+function docDiscipline(fname){
+  return (fname||'').replace(/\.docx$/i,'').replace(/[_]+/g,' ').replace(/\b\d+\s*quest(õ|o)es\b/i,'').replace(/\b(objetivas?|revisad[oa]|final|vers[aã]o\s*\d*|v\d+|corrigid[oa])\b/gi,'').replace(/[()\[\]]/g,' ').replace(/\s+-\s+/g,' – ').replace(/^[\s–-]+|[\s–-]+$/g,'').replace(/\s{2,}/g,' ').trim().slice(0,120);
+}
+
+/* ---------- copiar em tabela (cola organizado no Word, Excel, e-mail, Teams) ---------- */
+async function copyTables(sections){
+  const cell=v=>esc(String(v??'')).replace(/\n/g,'<br>');
+  const html=`<div style="font-family:Arial,sans-serif;font-size:10pt">`+sections.map(s=>
+    `<p style="margin:12px 0 4px"><b>${esc(s.title)}</b></p>`+(s.notes||[]).map(n=>`<p style="margin:0 0 4px">${esc(n)}</p>`).join('')+
+    (s.rows&&s.rows.length?`<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt"><thead><tr>${s.head.map(h=>`<th style="background:#e1efef;text-align:left">${cell(h)}</th>`).join('')}</tr></thead><tbody>${s.rows.map(r=>`<tr>${r.map(c=>`<td style="vertical-align:top">${cell(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'')).join('')+`</div>`;
+  const tsv=sections.map(s=>[s.title,...(s.notes||[]),...(s.rows&&s.rows.length?[s.head,...s.rows].map(r=>r.map(c=>String(c??'').replace(/[\t\r\n]+/g,' ')).join('\t')):[])].join('\n')).join('\n\n');
+  try{if(window.ClipboardItem&&navigator.clipboard?.write){await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([tsv],{type:'text/plain'})})]);return {ok:true}}}catch(e){}
+  try{const d=document.createElement('div');d.contentEditable='true';d.style.cssText='position:fixed;left:-9999px;top:0';d.innerHTML=html;document.body.appendChild(d);
+    const r=document.createRange();r.selectNodeContents(d);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);const ok=document.execCommand('copy');sel.removeAllRanges();d.remove();if(ok)return {ok:true}}catch(e){}
+  try{await navigator.clipboard.writeText(tsv);return {ok:true}}catch(e){}
+  return {ok:false,tsv};
+}
+const srcName=R=>R.source?.xml||R.source?.docx||'';
+function dupSection(R){
+  const rows=R.questions.filter(q=>q.dups&&q.dups.length).flatMap(q=>q.dups.map(d=>[q.name,d.kind,d.other||d.letters.join(', '),d.where==='Word'?(R.mode==='rev'?'Word':'Já no Word'):'No Moodle',short(d.text,200)]));
+  return {title:`Duplicidades — ${srcName(R)}`,notes:[R.mode==='rev'?'Questões com alternativas ou enunciados repetidos ou quase iguais. Corrigir antes de enviar para a inserção.':'Alternativas repetidas ou quase iguais. Não foram alteradas automaticamente. Por favor, revisem e enviem o texto correto:'],head:['Questão','Situação','Alternativas / questão','Onde','Texto'],rows};
+}
+function topicSection(R){
+  const rows=R.questions.filter(q=>q.offTopic||(q.aiTopic&&q.aiTopic.sit!=='relacionada')).map(q=>q.aiTopic?[q.name,({fora:'Fora do tema',trocado:'Tema do título diferente'}[q.aiTopic.sit]||'Em parte'),q.aiTopic.assunto,q.aiTopic.motivo]:[q.name,'Vocabulário diferente',q.offTopic.own.join(', '),'Termos mais comuns no banco: '+q.offTopic.disc.join(', ')]);
+  return {title:`Questões possivelmente fora do tema — ${srcName(R)}`,notes:[(R.aiDisc?`Disciplina considerada: ${R.aiDisc}. `:'')+(R.aiStatus||'')+' Nada foi alterado; confiram se pertencem à disciplina.'],head:['Questão','Situação','Assunto / termos','Motivo'],rows};
+}
+function reportSections(R){
+  const title=R.mode==='rev'?'Curadoria revisão (Word)':'Curadoria Word × Moodle';
+  const N=R.questions.length,withErr=R.questions.filter(q=>worst(q)>=3).length,withWarn=R.questions.filter(q=>worst(q)===2).length;
+  const S=[{title:`${title} — ${srcName(R)}`,notes:[`${N} questões · ${withErr} com erro · ${withWarn} só com pontos de atenção · ${N-withErr-withWarn} sem problemas.`]}];
+  if(R.global.length)S.push({title:'Padrões em todo o documento',head:['Gravidade','Observação'],rows:R.global.map(([s,t])=>[SEVLBL[s],t])});
+  if(R.questions.some(q=>q.dups&&q.dups.length))S.push(dupSection(R));
+  if(R.questions.some(q=>q.offTopic||q.aiTopic))S.push(topicSection(R));
+  const rows=[];for(const q of R.questions)for(const i of q.issues){if(i.sev==='info'||i.cat==='Tema'||i.cat==='Duplicidade')continue;
+    const lines=(i.lines||[]).slice(0,4).map(([k,t])=>`${k==='w'?'Word':'Moodle'}: ${short(t,120)}`).join('\n');
+    rows.push([q.name,i.cat,SEVLBL[i.sev],i.title,[i.detail,lines].filter(Boolean).join('\n')])}
+  S.push({title:'Problemas por questão',head:['Questão','Categoria','Gravidade','Problema','Detalhe'],rows});
+  return S;
+}
+async function doCopy(sections,boxId,okMsg){
+  const r=await copyTables(sections);
+  if(r.ok){status(okMsg+' Cole no Word, Excel, e-mail ou Teams: sai em tabela.');return}
+  const b=$(boxId);b.hidden=false;b.value=r.tsv;b.focus();b.select();status('Copie o texto selecionado (Ctrl+C). Colado no Excel, cada coluna vai para uma célula.');
+}
+
 /* ---------------- interface ---------------- */
 let REPORT=null,catFilter=null,expandAll=false;
-const files={docx:null,xml:null};let LAST=null;
+const files={docx:null,xml:null,rev:null};let LAST=null;let MODE='cmp';const REPORTS={cmp:null,rev:null};
 function setupDrop(zoneId,inputId,key,fnId,ext){
   const z=$(zoneId),inp=$(inputId);
-  const take=f=>{if(!f)return;if(!f.name.toLowerCase().endsWith(ext)){status(`Esse arquivo não é ${ext}. Escolha o arquivo certo neste campo.`,true);return}files[key]=f;$(fnId).textContent=f.name;z.classList.add('has');$('#run').disabled=!files.xml;status('')};
+  const take=f=>{if(!f)return;if(!f.name.toLowerCase().endsWith(ext)){status(`Esse arquivo não é ${ext}. Escolha o arquivo certo neste campo.`,true);return}files[key]=f;$(fnId).textContent=f.name;z.classList.add('has');$('#run').disabled=!files.xml;$('#runRev').disabled=!files.rev;status('')};
   inp.addEventListener('change',()=>take(inp.files[0]));
   z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over')});
   z.addEventListener('dragleave',()=>z.classList.remove('over'));
@@ -1320,6 +1715,7 @@ function setupDrop(zoneId,inputId,key,fnId,ext){
 }
 setupDrop('#dropDocx','#inDocx','docx','#fnDocx','.docx');
 setupDrop('#dropXml','#inXml','xml','#fnXml','.xml');
+setupDrop('#dropRev','#inRev','rev','#fnRev','.docx');
 function status(msg,err){const s=$('#status');s.textContent=msg;s.classList.toggle('err',!!err)}
 $('#run').addEventListener('click',async()=>{
   $('#run').disabled=true;status('Lendo os arquivos…');
@@ -1332,7 +1728,7 @@ $('#run').addEventListener('click',async()=>{
     status('Comparando…');
     const rep=await analyze(word&&word.qs.length?word:null,moodle);
     rep.source={docx:files.docx?.name||null,xml:files.xml.name};
-    window.__report=rep;REPORT=rep;catFilter=null;$('#banner').hidden=true;
+    rep.mode='cmp';window.__report=rep;REPORT=rep;REPORTS.cmp=rep;catFilter=null;$('#banner').hidden=true;
     LAST={word:word&&word.qs.length?word:null,xmlText,moodle,name:files.xml.name};$('#fixbox').hidden=false;
     render();setupAiTopic(guessDiscipline(xmlText,files.xml.name));
     status(`Pronto: ${rep.questions.length} questões conferidas.`);
@@ -1342,7 +1738,7 @@ $('#run').addEventListener('click',async()=>{
 function worst(q){return q.issues.reduce((m,i)=>Math.max(m,SEVRANK[i.sev]),0)}
 function dupRequestText(R){
   const rows=R.questions.filter(q=>q.dups&&q.dups.length);
-  const L=['Solicitação de correção: alternativas duplicadas','',`Disciplina/arquivo: ${R.source?.xml||''}`,'',
+  const L=['Solicitação de correção: alternativas duplicadas','',`Disciplina/arquivo: ${srcName(R)}`,'',
     'As questões abaixo têm alternativas repetidas ou quase iguais. Elas não foram alteradas automaticamente. Por favor, revisem e enviem o texto correto das alternativas:',''];
   for(const q of rows){L.push(`${q.name}${q.area?' ('+q.area+')':''}:`);for(const d of q.dups)L.push(`  - ${d.title.replace(/:.*/, '')}: alternativas ${d.letters.join(', ')} — ${d.where==='Word'?'já está assim no Word':'aparece assim no Moodle'} — “${short(d.text,160)}”`);L.push('')}
   return L.join('\n');
@@ -1354,72 +1750,86 @@ function guessDiscipline(xmlText,fname){
   const f=(fname||'').replace(/\.xml$/i,'').replace(/^quest\S*-/i,'').replace(/[_]+/g,' ').replace(/-\d{8}-\d{4}$/,'').replace(/\s+-\s+/g,' – ').trim();
   return f.slice(0,120);
 }
-/* ---------- áreas do conhecimento (vocabulário típico, sem acento, como início de palavra) ---------- */
+/* ---------- áreas do conhecimento (vocabulário típico e específico, sem acento, como início de palavra) ----------
+   Só entram termos que identificam a área com segurança. Palavras comuns a várias áreas
+   (desempenho, controle, custo, seleção, estratégia, equipe, dados, energia, matriz, sistema…) ficam de fora. */
 const AREAS={
  'Administração e Gestão':{nome:/administra|gest[aã]o|gerenc|marketing|log[ií]stic|recursos humanos|\brh\b|empreend|neg[oó]cio|secretariado|comercio exterior|processos gerenciais/i,
-   k:'administr gestao gestor gerenci empresa empresari organizacion lideranc lider estrategi marketing mercado cliente consumidor venda negocio empreend colaborador funcionari equipe produtividade logistic estoque suprimento fornecedor custo lucro receita orcament competitiv concorr swot stakeholder governanc motivac recrutament selecao desempenho meta planejament controle gerente diretor setor departament'},
+   k:'administrador administrativ empresa empresari organizacion lideranc gerencial gerenciament gestor marketing mercadolog cliente clientela consumidores venda negocio empreend colaboradores funcionari recrutament motivacional swot stakeholder governanca concorrenc competitividade fornecedor logistic orcamentari gerente diretoria organograma'},
  'Tecnologia e Inteligência Artificial':{nome:/intelig[eê]ncia artificial|computa|inform[aá]tica|sistemas de informa|software|program|ci[eê]ncia de dados|an[aá]lise e desenvolvimento|redes de computadores|tecnologia da informa|ciberseg|banco de dados|\bti\b|\bia\b/i,
-   k:'artificial algoritm software hardware programac programador codigo python java javascript sql neural chatbot llm gpt computac computador ciberseg criptograf servidor internet aplicativo automac robo robotic deep learning machine dataset analytics blockchain nuvem cloud digital tecnologic plataforma online virtual api frontend backend dados big rede redes'},
+   k:'algoritm software hardware programac programador python javascript sql neural neurais chatbot llm gpt computacion computador ciberseg criptograf servidor aplicativo robotic deep learning machine dataset analytics blockchain cloud api frontend backend artificial treinamento-de-modelo'},
  'Direito':{nome:/direito|jur[ií]dic|legisla|criminal|penal|constitucional/i,
-   k:'direito legisl juridic constituc civil penal crime criminal tribunal juiz processual jurisprud advog sentenc stf stj ilicit reu autor acao recurso codigo artigo inciso decreto norma normativ contrato contratual indeniz responsabilidade'},
- 'Saúde':{nome:/sa[uú]de|medicina|enfermagem|farm[aá]cia|biomedicina|fisioterapia|odontologia|psicologia hospitalar|cl[ií]nic|patolog|anatomia|fisiologia/i,
-   k:'paciente clinic doenc diagnost tratament medicament farmac farmaceut hospital enferm sintoma terapia terapeut saude cirurg infecc vacina exame laborator sangue celula patolog fisiolog anatom dose posolog prescric epidemiol renal cardiac glicem insulin hipertens diabet antibiot plasma soro hemoli bioquim analit'},
- 'Agronomia e Ciências Agrárias':{nome:/agro|agr[ií]col|agr[aá]ri|zootecnia|veterin[aá]ria|florestal|agronegócio/i,
-   k:'lavoura plantio safra adubac fertiliz irrigac pastagem pastejo forrag semente colheita agricol agronom praga herbicid fitossan rebanho bovino milho soja trigo cultivo cultivar agropecu fazenda rural calag gessag erosao terrac talhao produtividade solo plantas folha raiz germinac colhedora trator'},
- 'Engenharia e Exatas':{nome:/engenharia (civil|mec[aâ]nica|el[eé]trica|de produ|qu[ií]mica)|f[ií]sica|matem[aá]tica|c[aá]lculo|arquitetura/i,
-   k:'estrutur concreto resistenc tensao viga circuito eletric eletron mecanic termodin fluido calculo equac derivad integral vetor matriz material materiais carga potencia energia velocidade aceleracao forca torque'},
+   k:'juridic constituc penal crime criminal tribunal juiz processual jurisprud advog sentenc stf stj ilicit inciso decreto contratual indeniz magistrad legislac'},
+ 'Saúde':{nome:/sa[uú]de|medicina\b|enfermagem|farm[aá]cia|biomedicina|fisioterapia|odontologia|psicologia hospitalar|cl[ií]nic|patolog|anatomia|fisiologia/i,
+   k:'paciente clinic doenc diagnost tratament medicament farmac farmaceut hospital enferm sintoma terapia terapeut cirurg infecc vacina exame laborator patolog fisiolog anatom posolog prescric epidemiol renal cardiac glicem insulin hipertens diabet antibiot antimicrob hemoli'},
+ 'Agronomia e Ciências Agrárias':{nome:/agronom|agr[ií]col|agr[aá]ri|florestal|agroneg[oó]cio|engenharia agr/i,
+   k:'lavoura plantio safra adubac fertiliz irrigac semente colheita agricol agronom praga herbicid fungicid inseticid fitossan milho soja trigo cultivo cultivar agropecu fazenda rural calag gessag erosao terrac talhao germinac colhedora trator lavouras hortalic fruticultur olericultur'},
+ 'Zootecnia e Produção Animal':{nome:/zootecnia|produ[cç][aã]o animal|veterin|pecu[aá]ria|avicultura|suinocultura|bovinocultura|aquicultura|piscicultura/i,
+   k:'bovino bovinocultur suino suinocultur aves avicultur aviario frango poedeir galinha ovos leitao leitoes ovino caprino cordeiro equino piscicultur aquicultur rebanho pecuari zootec ruminal rumen ruminante bezerr novilh vaca touro matrizes leiteir lactac ordenha carcaca abate forrag pastag pastejo silagem feno= fenos= fenacao racao racoes volumoso bromatolog desmame confinament inseminac embriao embrioes prenhez reprodutor melhorament heterose cruzament ambiencia etologia granja curral animais animal zootecnista'},
+ 'Engenharia e Exatas':{nome:/engenharia (civil|mec[aâ]nica|el[eé]trica|de produ|qu[ií]mica)|f[ií]sica|matem[aá]tica|c[aá]lculo/i,
+   k:'concreto viga pilares circuito eletronic mecanic termodin fluido equac derivada integrais torque aceleracao vetorial'},
  'Contabilidade e Finanças':{nome:/cont[aá]b|financ|econom|tribut|auditoria|atuari/i,
-   k:'contab balanc ativo passivo patrimon debito credito tribut imposto fiscal lancament demonstrac depreciac auditori juros capital caixa amortiz investiment financ economi inflac cambio dividend acionista'},
+   k:'contab balanc patrimon debito credito tribut imposto fiscal lancament demonstrac depreciac auditori juros caixa amortiz investiment financ economi inflac cambio dividend acionista lucro receita'},
  'Educação':{nome:/educa[cç][aã]o|pedagog|licenciatura|did[aá]tica|ensino/i,
-   k:'ensino aprendizagem aluno estudante professor docente escola escolar pedagog didatic curricul educac alfabetiz bncc inclusao turma sala aula'},
+   k:'ensino aprendizagem aluno estudante professor docente escola escolar pedagog didatic curricul educac alfabetiz bncc turma sala-de-aula'},
  'Psicologia':{nome:/psicolog/i,
-   k:'psicolog comportament cognitiv emocion personalidade freud transtorno ansiedade depressao psiquic subjetiv psicoterap'},
+   k:'psicolog cognitiv emocion personalidade freud transtorno ansiedade depressao psiquic subjetiv psicoterap'},
  'Segurança':{nome:/seguran[cç]a (privada|p[uú]blica)|vigil[aâ]ncia|criminal[ií]stica/i,
-   k:'seguranca vigilan vigilante policia porte arma patrulh ronda monitorament cftv acesso flagrante'},
+   k:'vigilante vigilancia policia policial armas armament patrulh flagrante delito'},
  'Meio Ambiente':{nome:/ambient|ecolog|sustentab|gest[aã]o ambiental/i,
    k:'ambient sustentab ecolog poluic residuo reciclag biodivers desmatament emissao carbono climat'},
  'Nutrição':{nome:/nutri[cç]/i,
-   k:'nutri nutricion aliment dieta dietetic dietoterap caloria calori energetic proteina proteic carboidrat lipid gordura vitamina mineral micronutri macronutri fibra obesidade sobrepeso desnutric antropometr imc refeic cardapio manipulac enteral parenteral aleitament lactente gestante consumo alimentar segurança sodio acucar glicid'},
+   k:'nutri nutricion aliment dieta dietetic dietoterap caloria calori energetic proteina proteic carboidrat lipid gordura vitamina mineral micronutri macronutri fibra obesidade sobrepeso desnutric antropometr imc refeic cardapio enteral parenteral aleitament lactente gestante sodio acucar glicid'},
  'Educação Física e Esporte':{nome:/educa[cç][aã]o f[ií]sica|esporte|treinamento desportivo/i,
-   k:'esporte esportiv atleta treino treinament exercicio aerobi anaerobi musculac aptidao condicionament modalidade desportiv motora motor flexibilidade hipertrofia'},
+   k:'esporte esportiv atleta treino treinament exercicio aerobi anaerobi musculac aptidao condicionament modalidade desportiv motora flexibilidade hipertrofia'},
  'Ciências Biológicas e Química':{nome:/biologia|ci[eê]ncias biol[oó]gicas|qu[ií]mica|bioqu[ií]mica|gen[eé]tica|microbiologia|bot[aâ]nica|zoologia/i,
-   k:'celula celular genetic gene dna rna proteina enzima metabol molecul especie evoluc organism bacteria virus fungo ecossistema reacao quimic atomo ligacao solucao acido base ph oxidac reagente'},
+   k:'celula celular genetic gene= genes= genoma dna rna proteina enzima metabol molecul especie evoluc organism bacteria virus fungo ecossistema reacao quimic atomo ligacao acido oxidac reagente microbio microrganism'},
  'Serviço Social':{nome:/servi[cç]o social/i,
-   k:'assistente social vulnerabil politica publica assistencial cras creas beneficio cidadania familia comunidade direitos sociais desigualdade'},
+   k:'assistente-social vulnerabil assistencial cras creas beneficio cidadania familia comunidade desigualdade'},
  'Arquitetura e Urbanismo':{nome:/arquitetura|urbanismo/i,
-   k:'arquitet urban projeto arquitetonico edificac planta fachada paisag cidade espaco urbano zoneament ergonom conforto iluminac ventilac'},
+   k:'arquitet urban arquitetonico edificac fachada paisag cidade zoneament ergonom'},
  'Letras e Comunicação':{nome:/letras|l[ií]ngua|comunica[cç][aã]o|jornalismo|publicidade|portugu[eê]s/i,
    k:'lingu gramatic literatur poema sintax semant morfolog oracao verbo substantiv jornal publicidade midia narrativa'}
 };
+/* Formação geral (ENADE e similares): temas de cidadania, sociedade, ética, sustentabilidade, tecnologia e trabalho.
+   Essas questões fazem parte de bancos de qualquer curso, então não são apontadas como fora do tema. */
+const FG_KEYS='cidadania cidada cidadao democraci desigualdade direitos-humanos direitos-sociais direito-a inclusao-social inclusiva inclusivo inclusivas diversidade-cultural etnico-racia racismo violencia vulnerabilidade-social socioambient politicas-publicas politica-publica sociedade sociedades populac coletiv sociais social etica etico desinformac privacidade globalizac urbaniz mobilidade-urbana acessibil pobreza igualdade-de-genero trabalhador trabalho desconexao justica-social participacao-social responsabilidade-social transicao-energetica mudancas-climaticas fake-news dados-pessoais automacao qualificacao-profissional servicos-publicos territorial territorio periferia moradia saneamento seguranca-alimentar fome tecnologias-digitais redes-sociais plataformas-digitais informacao-cientifica cientifica democracia digitais direito= direitos= jornada-de-trabalho saude-mental usuarios'.split(' ');
 // áreas vizinhas: questões delas não contam como "fora do tema" (no máximo "em parte")
 const RELATED={
  'Administração e Gestão':['Contabilidade e Finanças','Direito','Psicologia','Letras e Comunicação'],
- 'Tecnologia e Inteligência Artificial':['Engenharia e Exatas'],
- 'Direito':['Administração e Gestão','Contabilidade e Finanças','Segurança','Meio Ambiente'],
- 'Saúde':['Psicologia','Administração e Gestão','Educação'],
- 'Agronomia e Ciências Agrárias':['Engenharia e Exatas','Meio Ambiente','Contabilidade e Finanças','Tecnologia e Inteligência Artificial'],
- 'Engenharia e Exatas':['Tecnologia e Inteligência Artificial','Meio Ambiente','Administração e Gestão'],
+ 'Tecnologia e Inteligência Artificial':['Engenharia e Exatas','Administração e Gestão'],
+ 'Direito':['Administração e Gestão','Contabilidade e Finanças','Segurança','Meio Ambiente','Serviço Social'],
+ 'Saúde':['Psicologia','Administração e Gestão','Educação','Nutrição','Ciências Biológicas e Química','Educação Física e Esporte'],
+ 'Agronomia e Ciências Agrárias':['Zootecnia e Produção Animal','Engenharia e Exatas','Meio Ambiente','Contabilidade e Finanças','Administração e Gestão','Tecnologia e Inteligência Artificial','Ciências Biológicas e Química','Nutrição'],
+ 'Zootecnia e Produção Animal':['Agronomia e Ciências Agrárias','Nutrição','Ciências Biológicas e Química','Saúde','Meio Ambiente','Contabilidade e Finanças','Administração e Gestão','Tecnologia e Inteligência Artificial','Engenharia e Exatas'],
+ 'Engenharia e Exatas':['Tecnologia e Inteligência Artificial','Meio Ambiente','Administração e Gestão','Arquitetura e Urbanismo'],
  'Contabilidade e Finanças':['Administração e Gestão','Direito'],
- 'Educação':['Psicologia','Letras e Comunicação','Tecnologia e Inteligência Artificial'],
- 'Psicologia':['Saúde','Educação','Administração e Gestão'],
+ 'Educação':['Psicologia','Letras e Comunicação','Tecnologia e Inteligência Artificial','Educação Física e Esporte'],
+ 'Psicologia':['Saúde','Educação','Administração e Gestão','Serviço Social'],
  'Segurança':['Direito','Administração e Gestão','Tecnologia e Inteligência Artificial'],
- 'Meio Ambiente':['Agronomia e Ciências Agrárias','Engenharia e Exatas','Direito'],
+ 'Meio Ambiente':['Agronomia e Ciências Agrárias','Zootecnia e Produção Animal','Engenharia e Exatas','Direito','Ciências Biológicas e Química'],
  'Letras e Comunicação':['Educação','Administração e Gestão'],
- 'Nutrição':['Saúde','Ciências Biológicas e Química','Educação Física e Esporte','Administração e Gestão','Agronomia e Ciências Agrárias'],
+ 'Nutrição':['Saúde','Ciências Biológicas e Química','Educação Física e Esporte','Administração e Gestão','Agronomia e Ciências Agrárias','Zootecnia e Produção Animal'],
  'Educação Física e Esporte':['Saúde','Educação','Nutrição','Psicologia'],
- 'Ciências Biológicas e Química':['Saúde','Nutrição','Agronomia e Ciências Agrárias','Meio Ambiente','Engenharia e Exatas'],
+ 'Ciências Biológicas e Química':['Saúde','Nutrição','Agronomia e Ciências Agrárias','Zootecnia e Produção Animal','Meio Ambiente','Engenharia e Exatas'],
  'Serviço Social':['Direito','Psicologia','Educação','Saúde','Administração e Gestão'],
  'Arquitetura e Urbanismo':['Engenharia e Exatas','Meio Ambiente','Tecnologia e Inteligência Artificial']
 };
-RELATED['Saúde'].push('Nutrição','Ciências Biológicas e Química','Educação Física e Esporte');RELATED['Agronomia e Ciências Agrárias'].push('Ciências Biológicas e Química','Nutrição');RELATED['Meio Ambiente'].push('Ciências Biológicas e Química');RELATED['Educação'].push('Educação Física e Esporte');RELATED['Psicologia'].push('Serviço Social');
 const AREA_KEYS=Object.fromEntries(Object.entries(AREAS).map(([a,v])=>[a,v.k.split(' ')]));
 const fold=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+// termos com hífen (ex.: politicas-publicas) são expressões de duas palavras
+function keyHits(words,joined,ks,orig){const h=new Map();
+  for(const k of ks){if(k.includes('-')){const ph=k.replace(/-/g,' ');const i=joined.indexOf(' '+ph);if(i>=0&&!h.has(k))h.set(k,ph);continue}
+    if(k.endsWith('=')){const e=k.slice(0,-1);if(orig[e]&&!h.has(k))h.set(k,orig[e]);continue}   // palavra exata
+    for(const w of words)if(w.startsWith(k)){if(!h.has(k))h.set(k,orig[w]);break}}
+  return h}
 function areaScores(text){
   // palavra original (com acento) para mostrar; comparação sem acento
   const orig={};for(const w of (text.toLowerCase().match(/[a-zà-ÿ]{3,}/g)||[])){const f=fold(w);if(!orig[f])orig[f]=w}
-  const words=Object.keys(orig);const sc={};const hits={};
-  for(const [a,ks] of Object.entries(AREA_KEYS)){const h=new Map();for(const w of words)for(const k of ks)if(w.startsWith(k)){if(!h.has(k))h.set(k,orig[w]);break}sc[a]=h.size;hits[a]=[...h.values()]}
-  return {sc,hits};
+  const words=Object.keys(orig);const joined=' '+fold(text).replace(/[^a-z0-9]+/g,' ')+' ';const sc={};const hits={};
+  for(const [a,ks] of Object.entries(AREA_KEYS)){const h=keyHits(words,joined,ks,orig);sc[a]=h.size;hits[a]=[...h.values()]}
+  const fg=keyHits(words,joined,FG_KEYS,orig);
+  return {sc,hits,fg:fg.size,fgHits:[...fg.values()]};
 }
 function disciplineAreas(name,ementa,qs){
   const byName=Object.entries(AREAS).filter(([a,v])=>v.nome.test(name)).map(x=>x[0]);
@@ -1436,37 +1846,83 @@ function disciplineAreas(name,ementa,qs){
 function runLocalTopic(name){
   const R=REPORT;if(!R)return;const ementa='';name=(name||'').trim();
   const qs=R.questions.filter(q=>q.topicText);
-  qs.forEach(q=>{delete q.aiTopic;q.issues=q.issues.filter(x=>!(x.cat==='Tema'&&x.ai))});
+  qs.forEach(q=>{delete q.aiTopic;delete q.geral;q.issues=q.issues.filter(x=>!(x.cat==='Tema'&&x.ai))});
   const D=disciplineAreas(name,ementa,qs);R.aiDisc=name;R.aiAreas=D;
-  if(!D.areas.length){R.aiStatus='';render();return}
-  let fora=0,parc=0;
-  for(const q of qs){
-    const {sc,hits}=areaScores(q.topicText);const f=fold(q.topicText);
+  if(!D.areas.length){R.aiStatus='';const tf=themeFitCheck(R);R.global=R.global.filter(g=>!g.tm);
+    const g=['info',tf.checked?`Assunto do título de cada questão comparado com o conteúdo das outras questões do mesmo assunto: ${tf.n?tf.n+' com assunto trocado.':'nenhuma divergência.'} A área da disciplina não foi reconhecida pelo nome, então a conferência de questões de outra área usou só o vocabulário do próprio banco.`:'A área da disciplina não foi reconhecida pelo nome; a conferência de tema usou só o vocabulário do próprio banco.'];g.tm=1;R.global.unshift(g);render();return}
+  // semelhança de cada questão com o vocabulário do resto do banco (questões que usam os mesmos termos das demais não são apontadas)
+  const S=qs.map(q=>areaScores(q.topicText));
+  // núcleo da disciplina: questões que claramente tratam da área da disciplina (2 ou mais termos dela)
+  const discCount=x=>{const f=0;return new Set(D.areas.flatMap(a=>x.hits[a])).size};
+  const core=qs.filter((q,i)=>q.topicVec&&discCount(S[i])>=2);
+  const cent={};core.forEach(q=>{for(const w in q.topicVec)cent[w]=(cent[w]||0)+q.topicVec[w]});
+  const simCore=q=>{if(!q.topicVec)return null;const c={};let cn=0,dot=0;const self=core.includes(q);
+    for(const w in cent){const x=cent[w]-(self?(q.topicVec[w]||0):0);if(x>0){c[w]=x;cn+=x*x}}cn=Math.sqrt(cn)||1;for(const w in q.topicVec)if(c[w])dot+=q.topicVec[w]*c[w]/cn;return dot};
+  const coreSims=core.map(simCore).sort((a,b)=>a-b);const medCore=core.length>=3?coreSims[Math.floor(coreSims.length/2)]:null;
+  let fora=0,parc=0;const geral=[];
+  qs.forEach((q,qi)=>{
+    const {sc,hits,fg,fgHits}=S[qi];const f=fold(q.topicText);
     const discHits=new Set(D.areas.flatMap(a=>hits[a]));D.own.forEach(o=>{if(f.includes(o))discHits.add(o)});
     const ds=discHits.size;
+    const near=a=>D.areas.some(x=>(RELATED[x]||[]).includes(a));
+    // conta junto as áreas vizinhas da disciplina: o que é vizinho não é "outra área"
+    const nearSum=Object.entries(sc).filter(([a])=>!D.areas.includes(a)&&near(a)).reduce((t,[,v])=>t+v,0);
     const other=Object.entries(sc).filter(([a])=>!D.areas.includes(a)).sort((a,b)=>b[1]-a[1])[0];
-    if(!other||other[1]<3)continue;
-    // a questão só é apontada se a outra área predomina sobre a da disciplina
-    if(other[1]<=ds)continue;
-    const near=D.areas.some(a=>(RELATED[a]||[]).includes(other[0]));
+    // questões de formação geral (cidadania, sociedade, ética, sustentabilidade, tecnologia e trabalho) fazem parte do banco
+    if(((fg>=4&&ds<=2)||(fg>=3&&ds<=1))&&(!other||fg>=other[1]*0.6)){q.geral=true;geral.push(q.name);return}
+    if(!other||other[1]<3)return;
+    if(other[1]<=ds+1)return;                       // a disciplina aparece tanto quanto a outra área
+    // usa o mesmo vocabulário das questões que são claramente da disciplina: não é apontada
+    const sc0=simCore(q);if(medCore!=null&&sc0!=null&&sc0>=medCore*0.6)return;
     let sit=null;
-    if(near){if(ds===0&&other[1]>=4)sit='parcial'}
-    else if(ds<=1)sit='fora';
-    else if(ds<other[1]/2&&other[1]>=4)sit='parcial';
-    if(!sit)continue;
-    q.aiTopic={sit,assunto:other[0],motivo:`O texto trata de ${other[0]} (${hits[other[0]].slice(0,5).join(', ')})${ds?` e tem pouca ligação com ${D.areas.join(' / ')}`:`, sem termos de ${D.areas.join(' / ')}`}.`};
+    if(near(other[0])){if(ds===0&&other[1]>=5)sit='fora';else if(ds===0&&other[1]>=4)sit='parcial'}
+    else if(ds===0||(ds===1&&other[1]>=4))sit='fora';
+    else if(ds*2<other[1]&&other[1]>=5)sit='parcial';
+    if(!sit)return;
+    q.aiTopic={sit,assunto:other[0],motivo:`O texto trata de ${other[0]} (${hits[other[0]].slice(0,5).join(', ')})${ds?` e tem pouca ligação com ${D.areas.join(' / ')}`:`, sem termos de ${D.areas.join(' / ')}`}, e usa um vocabulário diferente das demais questões do banco.`};
     if(sit==='fora')fora++;else parc++;
-    q.issues.unshift({sev:sit==='fora'?'erro':'atencao',cat:'Tema',ai:true,title:sit==='fora'?`Assunto de outra área: ${other[0]}`:`Só em parte ligada à disciplina (assunto principal: ${other[0]})`,detail:`Disciplina: “${name}” (área ${D.areas.join(' / ')}, identificada ${D.how}). ${q.aiTopic.motivo} Confira se a questão pertence a esta disciplina. Nada foi alterado.`});
-  }
-  R.aiStatus=`Área identificada: ${D.areas.join(' / ')} (${D.how}).`;
+    q.issues.unshift({sev:sit==='fora'?'erro':'atencao',cat:'Tema',ai:true,marks:hits[other[0]].slice(0,10),title:sit==='fora'?`Assunto de outra área: ${other[0]}`:`Só em parte ligada à disciplina (assunto principal: ${other[0]})`,detail:`Disciplina: “${name}” (área ${D.areas.join(' / ')}, identificada ${D.how}). ${q.aiTopic.motivo} Confira se a questão pertence a esta disciplina. Nada foi alterado.`});
+  });
+  R.geral=geral;
+  const tf=themeFitCheck(R);
+  R.global=R.global.filter(g=>!g.fg);
+  if(geral.length){const g=['info',`Formação geral: ${geral.join(', ')} ${geral.length===1?'trata':'tratam'} de temas gerais (cidadania, sociedade, ética, sustentabilidade, tecnologia e trabalho), comuns em bancos de qualquer curso, e não ${geral.length===1?'foi apontada':'foram apontadas'} como fora do tema.`];g.fg=1;R.global.push(g)}
+  R.global=R.global.filter(g=>!g.tm);
+  {const flagged=qs.filter(q=>q.aiTopic).length;const msg=`Tema conferido em ${qs.length} questões: área da disciplina ${D.areas.join(' / ')} (identificada ${D.how}). `+(flagged?`${flagged} ${flagged===1?'questão aparece':'questões aparecem'} no alerta de tema.`:'Nenhuma questão fora da área da disciplina.')+(tf.checked?` O assunto indicado no título de cada questão (entre parênteses) foi comparado com o conteúdo das outras questões do mesmo assunto: ${tf.n?tf.n+' com assunto trocado.':'nenhuma divergência.'}`:` O assunto do título de cada questão não pôde ser comparado, porque ${tf.why}.`);
+   const g=[flagged?'atencao':'info',msg];g.tm=1;R.global.unshift(g)}
+  R.aiStatus=`Área identificada: ${D.areas.join(' / ')} (${D.how}).`+(geral.length?` ${geral.length} ${geral.length===1?'questão de formação geral foi considerada':'questões de formação geral (cidadania, sociedade, ética, sustentabilidade, tecnologia e trabalho) foram consideradas'} dentro do banco: ${geral.join(', ')}.`:'');
   render();
+}
+
+/* assunto indicado no título da questão (entre parênteses) × conteúdo: compara com as outras questões do mesmo assunto */
+function themeTextOf(w){const ps=w.enun.filter(e=>e.k==='p');const rf=refFlags(ps);
+  return norm([...ps.filter((p,i)=>!rf[i]).map(p=>p.t),...w.enun.filter(e=>e.k==='table').map(t=>t.rows.flat().join(' ')),...w.alts.map(a=>a.t)].join(' '))}
+function themeFitCheck(R){
+  const qs=R.questions.filter(q=>q.area&&q.themeText);
+  qs.forEach(q=>{if(q.aiTopic&&q.aiTopic.sit==='trocado'){delete q.aiTopic;q.issues=q.issues.filter(x=>!x.tm)}});
+  const by={};qs.forEach((q,i)=>(by[q.area]=by[q.area]||[]).push(i));
+  const themes=Object.keys(by).filter(a=>by[a].length>=3);
+  if(!qs.length)return {checked:false,why:'as questões não têm o assunto no título'};
+  if(themes.length<2)return {checked:false,why:'cada assunto aparece em menos de 3 questões, então não há com o que comparar'};
+  const n=qs.length;const docs=qs.map(q=>{const tf={};for(const w of topicTokens(q.themeText))tf[w]=(tf[w]||0)+1;return tf});
+  const df={};docs.forEach(d=>Object.keys(d).forEach(w=>df[w]=(df[w]||0)+1));const idf=w=>Math.log((n+1)/(df[w]+0.5));
+  const vec=docs.map(d=>{const v={};let nn=0;for(const [w,c] of Object.entries(d)){if(df[w]<2)continue;v[w]=(1+Math.log(c))*idf(w);nn+=v[w]*v[w]}nn=Math.sqrt(nn)||1;for(const w in v)v[w]/=nn;return v});
+  const sim=(i,a)=>{const c={};let cn=0;for(const j of by[a])if(j!==i)for(const w in vec[j])c[w]=(c[w]||0)+vec[j][w];for(const w in c)cn+=c[w]*c[w];cn=Math.sqrt(cn)||1;let s=0;for(const w in vec[i])if(c[w])s+=vec[i][w]*c[w]/cn;return s};
+  let k=0;
+  qs.forEach((q,i)=>{if(q.aiTopic||!themes.includes(q.area))return;
+    const own=sim(i,q.area);const best=themes.filter(a=>a!==q.area).map(a=>[a,sim(i,a)]).sort((x,y)=>y[1]-x[1])[0];
+    if(!best||best[1]<0.25||best[1]<own*2.2)return;
+    k++;q.aiTopic={sit:'trocado',assunto:best[0],motivo:`No título está “${q.area}”, mas o conteúdo é bem mais parecido com o das questões de “${best[0]}” do que com o das outras questões de “${q.area}”.`};
+    q.issues.unshift({sev:'atencao',cat:'Tema',ai:true,tm:true,title:`Assunto do título diferente do conteúdo: parece ser “${best[0]}”`,detail:q.aiTopic.motivo+' Confira se o assunto no título está certo. Nada foi alterado.'});
+  });
+  return {checked:true,n:k};
 }
 function setupAiTopic(name){runLocalTopic(name)}
 function topicRequestText(R){
   const rows=R.questions.filter(q=>q.offTopic||(q.aiTopic&&q.aiTopic.sit!=='relacionada'));
-  const L=['Conferência de tema: questões possivelmente fora da disciplina','',`Disciplina/arquivo: ${R.source?.xml||''}`,'',
+  const L=['Conferência de tema: questões possivelmente fora da disciplina','',`Disciplina/arquivo: ${srcName(R)}`,'',
     'As questões abaixo usam um vocabulário muito diferente das demais questões da disciplina. Nada foi alterado. Por favor, confiram se pertencem a esta disciplina:',''];
-  for(const q of rows)L.push(q.aiTopic&&q.aiTopic.sit!=='relacionada'?`${q.name}: ${q.aiTopic.sit==='fora'?'fora do tema':'só em parte ligada'} — assunto: ${q.aiTopic.assunto}. ${q.aiTopic.motivo}`:`${q.name}: vocabulário diferente das demais — ${q.offTopic.own.join(', ')}`);
+  for(const q of rows)L.push(q.aiTopic&&q.aiTopic.sit!=='relacionada'?`${q.name}: ${({fora:'fora do tema',trocado:'tema do título diferente do conteúdo'}[q.aiTopic.sit]||'só em parte ligada')} — assunto: ${q.aiTopic.assunto}. ${q.aiTopic.motivo}`:`${q.name}: vocabulário diferente das demais — ${q.offTopic.own.join(', ')}`);
   if(R.aiDisc)L.splice(3,0,`Disciplina considerada: ${R.aiDisc}`);
   return L.join('\n');
 }
@@ -1476,33 +1932,31 @@ function renderTopicAlert(R){
   rows.sort((a,b)=>((b.aiTopic?.sit==='fora')-(a.aiTopic?.sit==='fora')));
   box.hidden=false;
   const cell=q=>q.aiTopic&&q.aiTopic.sit!=='relacionada'
-    ?`<td><span class="sit ${q.aiTopic.sit}">${q.aiTopic.sit==='fora'?'Fora do tema':'Em parte'}</span></td><td>${esc(q.aiTopic.assunto)}</td><td>${esc(q.aiTopic.motivo)}</td>`
+    ?`<td><span class="sit ${q.aiTopic.sit}">${({fora:'Fora do tema',trocado:'Tema do título diferente'}[q.aiTopic.sit]||'Em parte')}</span></td><td>${esc(q.aiTopic.assunto)}</td><td>${esc(q.aiTopic.motivo)}</td>`
     :`<td><span class="sit estat">Vocabulário diferente</span></td><td>${esc(q.offTopic.own.join(', '))}</td><td>Termos mais comuns na disciplina: ${esc(q.offTopic.disc.join(', '))}</td>`;
   box.innerHTML=`<h2><span class="ico" aria-hidden="true">?</span>Sugestão: ${rows.length===1?'1 questão pode estar fora do tema':rows.length+' questões podem estar fora do tema'} da disciplina</h2>
     <p>A ferramenta leu as questões e sugere as que tratam de assunto de outra área ou destoam das demais.${R.aiStatus?' '+esc(R.aiStatus):''} <b>Nada foi alterado.</b> É uma sugestão: a pessoa responsável pela disciplina deve conferir e, se for o caso, pedir a troca da questão.</p>
     <div class="duptable"><table><thead><tr><th>Questão</th><th>Situação</th><th>Assunto / termos</th><th>Motivo</th></tr></thead><tbody>
     ${rows.map(q=>`<tr><td class="q">${esc(q.name)}</td>${cell(q)}</tr>`).join('')}
     </tbody></table></div>
-    <button class="dupbtn" id="topicCopy">Copiar lista para conferência</button>
+    <button class="dupbtn" id="topicCopy">Copiar lista para conferência (tabela)</button>
     <textarea id="topicBox" hidden style="width:100%;height:140px" readonly></textarea>`;
-  $('#topicCopy').addEventListener('click',async()=>{const t=topicRequestText(R);
-    try{await navigator.clipboard.writeText(t);status('Lista copiada.')}catch{const b=$('#topicBox');b.hidden=false;b.value=t;b.focus();b.select();status('Copie o texto selecionado (Ctrl+C).')}});
+  $('#topicCopy').addEventListener('click',()=>doCopy([topicSection(R)],'#topicBox','Lista copiada.'));
 }
 function renderDupAlert(R){
   const box=$('#dupAlert');const rows=R.questions.filter(q=>q.dups&&q.dups.length);
   if(!rows.length){box.hidden=true;box.innerHTML='';return}
   const n=rows.length;
   box.hidden=false;
-  box.innerHTML=`<h2><span class="ico" aria-hidden="true">!</span>Alternativas duplicadas em ${n} ${n===1?'questão':'questões'}: encaminhar para correção</h2>
-    <p>Foram encontradas alternativas repetidas (duplicadas, triplicadas…) ou quase iguais. <b>Nada disso foi alterado automaticamente.</b> A pessoa responsável pela disciplina deve conferir e solicitar a correção à equipe responsável pelo conteúdo.</p>
-    <div class="duptable"><table><thead><tr><th>Questão</th><th>Situação</th><th>Alternativas</th><th>Onde</th><th>Texto</th></tr></thead><tbody>
-    ${rows.flatMap(q=>q.dups.map(d=>`<tr><td class="q">${esc(q.name)}</td><td><span class="dupkind">${esc(d.kind)}</span></td><td>${esc(d.letters.join(', '))}</td><td>${d.where==='Word'?'Já no Word':'No Moodle'}</td><td>${esc(short(d.text,140))}</td></tr>`)).join('')}
+  const rev=R.mode==='rev';
+  box.innerHTML=`<h2><span class="ico" aria-hidden="true">!</span>${rev?`Duplicidades em ${n} ${n===1?'questão':'questões'}: corrigir antes da inserção`:`Alternativas duplicadas em ${n} ${n===1?'questão':'questões'}: encaminhar para correção`}</h2>
+    <p>${rev?'Foram encontradas alternativas repetidas (duplicadas, triplicadas…) ou quase iguais, ou questões repetidas no mesmo banco. Corrija no Word antes de enviar para a inserção.':'Foram encontradas alternativas repetidas (duplicadas, triplicadas…) ou quase iguais. <b>Nada disso foi alterado automaticamente.</b> A pessoa responsável pela disciplina deve conferir e solicitar a correção à equipe responsável pelo conteúdo.'}</p>
+    <div class="duptable"><table><thead><tr><th>Questão</th><th>Situação</th><th>${rev?'Alternativas / questão':'Alternativas'}</th><th>Onde</th><th>Texto</th></tr></thead><tbody>
+    ${rows.flatMap(q=>q.dups.map(d=>`<tr><td class="q">${esc(q.name)}</td><td><span class="dupkind">${esc(d.kind)}</span></td><td>${esc(d.other||d.letters.join(', '))}</td><td>${d.where==='Word'?(rev?'Word':'Já no Word'):'No Moodle'}</td><td>${esc(short(d.text,140))}</td></tr>`)).join('')}
     </tbody></table></div>
-    <button class="dupbtn" id="dupCopy">Copiar solicitação de correção</button>
+    <button class="dupbtn" id="dupCopy">${rev?'Copiar lista (tabela)':'Copiar solicitação de correção (tabela)'}</button>
     <textarea id="dupBox" hidden style="width:100%;height:160px" readonly></textarea>`;
-  $('#dupCopy').addEventListener('click',async()=>{const t=dupRequestText(R);
-    try{await navigator.clipboard.writeText(t);status('Solicitação copiada. Cole no e-mail ou chamado para a equipe responsável.')}
-    catch{const b=$('#dupBox');b.hidden=false;b.value=t;b.focus();b.select();status('Copie o texto selecionado (Ctrl+C).')}});
+  $('#dupCopy').addEventListener('click',()=>doCopy([dupSection(R)],'#dupBox',R.mode==='rev'?'Lista copiada.':'Solicitação copiada.'));
 }
 function render(){
   const R=REPORT;if(!R)return;
@@ -1512,15 +1966,15 @@ function render(){
   for(const q of R.questions){const seen={};for(const i of q.issues){if(i.sev==='info'&&!seen[i.cat])seen[i.cat]=seen[i.cat]||'info';if(SEVRANK[i.sev]>SEVRANK[seen[i.cat]||'info']||!seen[i.cat])seen[i.cat]=i.sev}
     for(const [c,s] of Object.entries(seen)){catCount[c].n++;catCount[c].sev=Math.max(catCount[c].sev,SEVRANK[s])}}
   const sevName=r=>r>=3?'erro':r===2?'atencao':r===1?'info':'ok';
-  const S=$('#summary');S.hidden=false;$('#intro').hidden=true;
+  const S=$('#summary');S.hidden=false;$('#intro').hidden=true;$('#revIntro').hidden=true;
   renderDupAlert(R);renderTopicAlert(R);
   S.innerHTML=`<div class="sumtop"><span class="big">${N} questões</span>
     <span><span class="dot erro" style="display:inline-block"></span> <b>${withErr}</b> <span class="sub">com erro</span></span>
     <span><span class="dot atencao" style="display:inline-block"></span> <b>${withWarn}</b> <span class="sub">só com pontos de atenção</span></span>
     <span><span class="dot ok" style="display:inline-block"></span> <b>${clean}</b> <span class="sub">sem problemas</span></span></div>
-    ${R.source?`<div class="sub" style="font-size:.85rem">${esc(R.source.docx||'sem Word')} × ${esc(R.source.xml)}</div>`:''}
+    ${R.source?`<div class="sub" style="font-size:.85rem">${R.mode==='rev'?'Word: '+esc(R.source.docx):esc(R.source.docx||'sem Word')+' × '+esc(R.source.xml)}</div>`:''}
     <div class="cats" role="group" aria-label="Filtrar por categoria">${CATS.filter(c=>catCount[c].n).map(c=>`<button class="chip" data-cat="${c}" aria-pressed="${catFilter===c}"><span class="dot ${sevName(catCount[c].sev)}"></span>${c} <b>${catCount[c].n}</b></button>`).join('')}</div>
-    ${R.global.length?`<div class="notes"><h2>Padrões em toda a disciplina</h2><ul>${R.global.map(([s,t])=>`<li><span class="badge ${s}">${SEVLBL[s]}</span> ${esc(t)}</li>`).join('')}</ul></div>`:''}`;
+    ${R.global.length?`<div class="notes"><h2>${R.mode==='rev'?'Padrões em todo o documento':'Padrões em toda a disciplina'}</h2><ul>${R.global.map(([s,t])=>`<li><span class="badge ${s}">${SEVLBL[s]}</span> ${esc(t)}</li>`).join('')}</ul></div>`:''}`;
   S.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{catFilter=catFilter===b.dataset.cat?null:b.dataset.cat;render()}));
   $('#results').hidden=false;renderList();
 }
@@ -1541,31 +1995,71 @@ function renderList(){
         <span class="qarea">${q.area?`<strong>${esc(q.area)}</strong>`:''}${q.tipo?` · <span class="mono">${esc(q.tipo)}</span>`:''}</span>
         <span class="badges">${badges}</span></button>
       <div class="qbody" ${expandAll?'':'hidden'}>${expandAll?bodyHtml(q,issues):''}</div></div>`}).join('');
+  if(expandAll)L.querySelectorAll('.q').forEach(el=>{const q=REPORT.questions.find(x=>String(x.n)===el.dataset.n);applyMarks(el.querySelector('.qbody'),catFilter?q.issues.filter(i=>i.cat===catFilter):q.issues)});
   L.querySelectorAll('.qhead').forEach(b=>b.addEventListener('click',()=>{
     const box=b.nextElementSibling,open=box.hidden;const q=REPORT.questions.find(x=>String(x.n)===b.parentElement.dataset.n);
-    if(open&&!box.innerHTML)box.innerHTML=bodyHtml(q,catFilter?q.issues.filter(i=>i.cat===catFilter):q.issues);
+    if(open&&!box.innerHTML){const iss=catFilter?q.issues.filter(i=>i.cat===catFilter):q.issues;box.innerHTML=bodyHtml(q,iss);applyMarks(box,iss)}
     box.hidden=!open;b.setAttribute('aria-expanded',open);
   }));
 }
 function altList(alts){return `<ol class="alts">${alts.map((a,i)=>`<li class="${a.ok?'ok':''}"><span>${'abcdefgh'[i]}.</span><div>${a.html}${a.ok?' ✓':''}</div></li>`).join('')}</ol>`}
 function bodyHtml(q,issues){
-  const iss=issues.length?`<ul class="issues">${issues.map(i=>`<li class="issue ${i.sev}"><div class="t"><span class="cat">${i.cat}</span>${esc(i.title)}</div>${i.detail?`<div class="d">${esc(i.detail)}</div>`:''}${(i.lines||[]).map(([k,t])=>`<div class="diffline ${k}">${k==='w'?'Word':'Moodle'}: ${esc(t)}</div>`).join('')}</li>`).join('')}</ul>`:'<div class="sub">Nenhum problema encontrado.</div>';
+  const iss=issues.length?`<ul class="issues">${issues.map((i,k)=>`<li class="issue ${i.sev}" data-i="${k}"><div class="t"><span class="cat">${i.cat}</span>${esc(i.title)}</div>${i.detail?`<div class="d">${esc(i.detail)}</div>`:''}${(i.lines||[]).map(([k,t])=>`<div class="diffline ${k}">${k==='w'?'Word':'Moodle'}: ${esc(t)}</div>`).join('')}</li>`).join('')}</ul>`:'<div class="sub">Nenhum problema encontrado.</div>';
   const fbW=q.wordFb&&q.wordFb.length?`<div class="fb">${q.wordFb.map(esc).join('<br>')}</div>`:'';
   const fbM=(q.moodleAlts||[]).some(a=>a.fb)||q.moodleGen?`<div class="fb">${(q.moodleAlts||[]).filter(a=>a.fb).map(a=>esc(a.fb)).join('<br>')}${q.moodleGen?'<br>'+esc(q.moodleGen):''}</div>`:'<div class="fb none">Sem feedback.</div>';
-  const wp=q.wordHtml!=null?`<div class="pane"><h3>Word original</h3><div class="inner word">${q.wordHtml}${altList(q.wordAlts||[])}</div></div>`:'';
+  const wp=q.wordHtml!=null?`<div class="pane"><h3>${q.moodleHtml==null?'Como está no Word':'Word original'}</h3><div class="inner word">${q.wordHtml}${altList(q.wordAlts||[])}</div></div>`:'';
   const mp=q.moodleHtml!=null?`<div class="pane"><h3>Como o Moodle exibe</h3><div class="inner moodle"><div class="qtext">${q.moodleHtml}</div>${altList(q.moodleAlts||[])}</div></div>`:'';
-  return iss+`<div class="cmp">${wp}${mp}</div>`;
+  const leg=issues.length?`<div class="legend">Trechos e alternativas com problema ficam coloridos: <mark class="hl erro">erro</mark><mark class="hl atencao">atenção</mark><mark class="hl info">informação</mark> · clique no problema para ir até o trecho</div>`:'';
+  return iss+leg+`<div class="cmp">${wp}${mp}</div>`;
+}
+/* ---------- marcação colorida dos trechos com problema no enunciado e nas alternativas ---------- */
+const LETTERS='abcdefgh';
+function issueAlts(i){
+  if(i.alts)return i.alts;const out=new Set();const t=i.title||'';const add=s=>s.split(/,\s*| e /).forEach(x=>{const k=LETTERS.indexOf(x.trim());if(k>=0)out.add(k)});
+  let m=t.match(/^Alternativas? ([a-h](?:(?:,\s*| e )[a-h])*)(?=[\s:]|$)/);if(m)add(m[1]);
+  m=t.match(/: ([a-h](?:(?:,\s*| e )[a-h])*) iguais/);if(m)add(m[1]);
+  m=t.match(/alternativa ([a-h])\b/i);if(m&&!/^Alternativas? /.test(t))add(m[1]);
+  m=t.match(/alternativa (\d+)\b/i);if(m)out.add(+m[1]-1);
+  return [...out];
+}
+const quotesOf=s=>{const out=[];const re=/“([^”]{2,})”/g;let m;while((m=re.exec(s||'')))out.push(m[1]);return out};
+const cleanQ=t=>String(t||'').trim().replace(/^“|”$/g,'').replace(/^\s*…\s*/,'').replace(/\s*…\s*$/,'').trim();
+function markIn(root,needle,cls,k,title,all,word){
+  needle=(needle||'').replace(/\u00a0/g,' ');if(needle.length<2)return 0;
+  const nodes=[];let full='';
+  const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement&&n.parentElement.closest('.legend')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
+  let n;while((n=tw.nextNode())){nodes.push([n,full.length]);full+=n.nodeValue.replace(/\u00a0/g,' ')}
+  const find=nd=>{const out=[];let from=0;while(true){const i=full.indexOf(nd,from);if(i<0)break;from=i+nd.length;
+      if(word&&(/[A-Za-zÀ-ÿ]/.test(full[i-1]||'')||/[A-Za-zÀ-ÿ]/.test(full[i+nd.length]||'')))continue;out.push([i,i+nd.length]);if(!all)break}return out};
+  let ranges=find(needle);
+  if(!ranges.length&&needle.length>40)ranges=find(needle.slice(0,40).trim());   // trecho longo quebrado em linhas: marca o começo
+  for(const [s0,e0] of ranges.reverse()){
+    for(let j=nodes.length-1;j>=0;j--){const [node,off]=nodes[j];const len=node.nodeValue.length;if(off>=e0||off+len<=s0)continue;
+      const a=Math.max(s0,off)-off,b=Math.min(e0,off+len)-off;if(b<=a)continue;
+      let mid=node;if(a>0)mid=node.splitText(a);if(b-a<mid.nodeValue.length)mid.splitText(b-a);
+      const mk=document.createElement('mark');mk.className='hl '+cls;mk.dataset.i=k;mk.title=title;mid.parentNode.insertBefore(mk,mid);mk.appendChild(mid)}
+  }
+  return ranges.length;
+}
+function applyMarks(box,issues){
+  const panes=[...box.querySelectorAll('.pane .inner')];if(!panes.length)return;
+  const wordP=box.querySelector('.inner.word'),moodP=box.querySelector('.inner.moodle');
+  issues.forEach((i,k)=>{let hit=0;
+    for(const a of issueAlts(i))panes.forEach(p=>{const li=p.querySelectorAll('ol.alts > li')[a];if(li){if(!li.classList.contains('althl')||SEVRANK[i.sev]>SEVRANK[li.dataset.sev]){li.classList.remove('erro','atencao','info');li.classList.add('althl',i.sev);li.dataset.sev=i.sev;li.dataset.i=k;li.title=i.title}hit++}});
+    for(const [kind,t] of (i.lines||[])){const p=kind==='w'?wordP:moodP;if(p)hit+=markIn(p,cleanQ(t),i.sev,k,i.title,false,false)}
+    const qs=[...quotesOf(i.detail),...quotesOf(i.title)].map(cleanQ).filter(x=>x.length>=2&&!/^(Figura 1 –|Tabela 1 –|Fonte:|anteriores|acima|\(|\))$/.test(x));
+    const isWord=i.cat==='Ortografia';
+    for(const q of qs)panes.forEach(p=>{hit+=markIn(p,q,i.sev,k,i.title,isWord,isWord)});
+    for(const w of (i.marks||[]))panes.forEach(p=>{hit+=markIn(p,w,i.sev,k,i.title,true,true)});
+    const li=box.querySelector(`.issue[data-i="${k}"]`);
+    if(li&&hit){li.classList.add('has-mark');li.querySelector('.t').insertAdjacentHTML('beforeend','<span class="go">ver no texto ↓</span>');
+      li.addEventListener('click',()=>{const els=box.querySelectorAll(`mark.hl[data-i="${k}"], li.althl[data-i="${k}"]`);if(!els.length)return;
+        els[0].scrollIntoView({behavior:'smooth',block:'center'});els.forEach(e=>{e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash')})})}
+  });
 }
 $('#onlyIssues').addEventListener('change',()=>{catFilter=null;render()});
 $('#expandAll').addEventListener('click',()=>{expandAll=!expandAll;$('#expandAll').textContent=expandAll?'Recolher tudo':'Expandir tudo';renderList()});
-$('#copy').addEventListener('click',async()=>{
-  const R=REPORT;if(!R)return;
-  const dupTxt=(R.questions.some(q=>q.dups&&q.dups.length)?dupRequestText(R)+'\n----\n':'')+(R.questions.some(q=>q.offTopic)?topicRequestText(R)+'\n----\n':'');
-  const lines=[dupTxt+`Curadoria Word × Moodle — ${R.questions.length} questões`,...R.global.map(([s,t])=>`[${SEVLBL[s]}] ${t}`),''];
-  for(const q of R.questions){const is=q.issues.filter(i=>i.sev!=='info');if(!is.length)continue;lines.push(`${q.name||'Q'+q.n}${q.area?' ('+q.area+')':''}`);for(const i of is)lines.push(`  - [${SEVLBL[i.sev]}] ${i.cat}: ${i.title}${i.detail?' — '+i.detail:''}`)}
-  const txt=lines.join('\n');
-  try{await navigator.clipboard.writeText(txt);status('Relatório copiado.')}catch{const b=$('#copyBox');b.hidden=false;b.value=txt;b.focus();b.select();status('Copie o texto selecionado abaixo (Ctrl+C).')}
-});
+$('#copy').addEventListener('click',()=>{const R=REPORT;if(!R)return;doCopy(reportSections(R),'#copyBox','Relatório copiado em tabela.')});
 
 $('#fixBtn').addEventListener('click',async()=>{
   if(!LAST)return;const btn=$('#fixBtn');btn.disabled=true;status('Corrigindo…');
@@ -1574,10 +2068,10 @@ $('#fixBtn').addEventListener('click',async()=>{
     window.__fixed=xml;
     const moodle2=readMoodle(xml);
     const rep=await analyze(LAST.word,moodle2);
-    rep.source={docx:files.docx?.name||null,xml:'XML corrigido'};REPORT=rep;window.__report2=rep;catFilter=null;
+    rep.source={docx:files.docx?.name||null,xml:'XML corrigido'};rep.mode='cmp';REPORT=rep;REPORTS.cmp=rep;window.__report2=rep;catFilter=null;
     const b=$('#banner');b.hidden=false;
     b.innerHTML=`<b>Correção aplicada em ${log.changed} de ${log.total} questões.</b> ${log.tables.length?`Tabelas montadas a partir do Word: ${esc(log.tables.join(', '))}. `:''}${log.eqs.length?`Equações inseridas como imagem: ${esc(log.eqs.join(', '))}. `:''}${log.eqFail.length?`Equações que não puderam ser desenhadas (ficaram como texto formatado): ${esc(log.eqFail.join(', '))}. `:''}${log.restored.length?`Texto ou caracteres recuperados do Word: ${esc(log.restored.join(', '))}. `:''}${log.kept.length?`Mantidas sem alteração por segurança: ${esc(log.kept.join(', '))}. `:''}${log.notRebuilt.length?`<br><b style="color:var(--warn)">Questões que não puderam ser refeitas a partir do Word (${log.notRebuilt.length}):</b> nelas foi ajustado só o espaçamento${log.mkByText.length?' e foram colocados os marcadores de lista':''}; confira no Moodle. ${esc(log.notRebuilt.slice(0,8).map(x=>x.q+' — '+x.why).join(' · '))}${log.notRebuilt.length>8?' …':''}<br>`:''}${log.dupKept.length?`<br><b style="color:var(--err)">Alternativas não alteradas por duplicidade: ${esc(log.dupKept.join(', '))}.</b> Elas continuam como estavam e precisam ser corrigidas pela equipe responsável. `:''}O relatório abaixo já é do XML corrigido.`;
-    render();
+    rep.bannerHtml=b.innerHTML;render();
     const base=(LAST.name||'questoes.xml').replace(/\.xml$/i,'');
     const zip=new JSZip();zip.file(base+' - corrigido.xml',xml);
     const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
@@ -1592,6 +2086,42 @@ $('#fixBtn').addEventListener('click',async()=>{
       catch(e){status(e&&e.code==='declined'?'Download cancelado.':'Não foi possível salvar o arquivo ('+(e&&e.code||'erro')+').',e&&e.code!=='declined')}}
   }catch(e){console.error(e);status('Não foi possível gerar o XML corrigido: '+(e.message||e),true)}
   btn.disabled=false;
+});
+
+/* ---------- abas ---------- */
+function setMode(m){
+  if(MODE===m)return;MODE=m;
+  $('#tabCmp').setAttribute('aria-selected',m==='cmp');$('#tabRev').setAttribute('aria-selected',m==='rev');
+  $('#tabCmp').tabIndex=m==='cmp'?0:-1;$('#tabRev').tabIndex=m==='rev'?0:-1;
+  $('#paneCmp').hidden=m!=='cmp';$('#paneRev').hidden=m!=='rev';$('#howto').hidden=m!=='cmp';
+  REPORT=REPORTS[m];catFilter=null;expandAll=false;$('#expandAll').textContent='Expandir tudo';$('#copyBox').hidden=true;
+  $('#fixbox').hidden=!(m==='cmp'&&LAST);
+  const b=$('#banner');b.hidden=!(REPORT&&REPORT.bannerHtml);if(REPORT&&REPORT.bannerHtml)b.innerHTML=REPORT.bannerHtml;
+  if(REPORT)render();
+  else{['#summary','#results','#dupAlert','#topicAlert'].forEach(x=>$(x).hidden=true);$('#intro').hidden=m!=='cmp';$('#revIntro').hidden=m!=='rev'}
+  status('');
+  if(m==='rev')loadSpeller();   // já vai baixando o dicionário
+}
+$('#tabCmp').addEventListener('click',()=>setMode('cmp'));
+$('#tabRev').addEventListener('click',()=>setMode('rev'));
+$('#tabRev').tabIndex=-1;
+document.querySelector('.tabs').addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const m=MODE==='cmp'?'rev':'cmp';setMode(m);$(m==='cmp'?'#tabCmp':'#tabRev').focus();e.preventDefault()}});
+$('#runRev').addEventListener('click',async()=>{
+  const btn=$('#runRev');btn.disabled=true;status('Lendo o Word…');
+  try{
+    const spP=loadSpeller();
+    const word=await readDocx(files.rev);
+    if(!word.qs.length)throw new Error('Não encontrei questões no Word. A ferramenta procura títulos como “Questão 01 (…)”.');
+    status('Carregando o dicionário de português…');const sp=await spP;
+    status('Revisando…');await new Promise(r=>setTimeout(r,20));
+    const rep=reviewWord(word,sp);
+    rep.source={docx:files.rev.name,xml:null};
+    window.__review=rep;REPORT=rep;REPORTS.rev=rep;catFilter=null;$('#banner').hidden=true;
+    render();runLocalTopic(docDiscipline(files.rev.name));
+    const need=rep.questions.filter(q=>worst(q)>=2).length;
+    status(`Pronto: ${rep.questions.length} questões revisadas, ${need} precisam de ajuste.`);
+  }catch(e){console.error(e);status(e.message||'Não foi possível ler o Word.',true)}
+  btn.disabled=!files.rev;
 });
 /* exemplo carregado */
 try{const s=document.getElementById('sample');if(s){REPORT=JSON.parse(s.textContent);const b=$('#banner');b.hidden=false;b.innerHTML=`<b>Exemplo carregado:</b> ${esc(REPORT.label||'')}. Envie o Word e o XML de uma disciplina para conferir e, se quiser, gerar o XML corrigido automaticamente.`;render()}}catch(e){console.error(e)}
